@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '@/composables/useI18n'
+import { useAutoSave } from '@/composables/useAutoSave'
+import { useTrussStore } from '@/stores/trussStore'
+import { useUiStore, ToolType } from '@/stores/uiStore'
+import { useProjectsStore } from '@/stores/projectsStore'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import {
   MousePointer2,
   Circle,
@@ -16,6 +22,93 @@ import {
 } from 'lucide-vue-next'
 
 const { t } = useI18n()
+const trussStore = useTrussStore()
+const uiStore = useUiStore()
+const projectsStore = useProjectsStore()
+const { saveStatus } = useAutoSave()
+
+const projectName = computed({
+  get: () => projectsStore.currentProject?.name ?? '',
+  set: (val: string) => {
+    if (projectsStore.currentProjectId) {
+      projectsStore.renameProject(projectsStore.currentProjectId, val)
+    }
+  },
+})
+
+const tools = [
+  { type: ToolType.SELECT, icon: MousePointer2, labelKey: 'tools.select', shortcutKey: 'toolShortcuts.select' },
+  { type: ToolType.ADD_NODE, icon: Circle, labelKey: 'tools.addNode', shortcutKey: 'toolShortcuts.addNode' },
+  { type: ToolType.ADD_ELEMENT, icon: Minus, labelKey: 'tools.addElement', shortcutKey: 'toolShortcuts.addElement' },
+  { type: ToolType.ADD_SUPPORT, icon: Triangle, labelKey: 'tools.addSupport', shortcutKey: 'toolShortcuts.addSupport' },
+  { type: ToolType.ADD_LOAD, icon: ArrowDown, labelKey: 'tools.addLoad', shortcutKey: 'toolShortcuts.addLoad' },
+]
+
+const saveStatusLabel = computed(() => {
+  switch (saveStatus.value) {
+    case 'saved': return t('header.saved')
+    case 'unsaved': return t('header.unsaved')
+    case 'saving': return t('header.saving')
+    default: return ''
+  }
+})
+
+const saveStatusVariant = computed(() => {
+  switch (saveStatus.value) {
+    case 'saved': return 'secondary' as const
+    case 'unsaved': return 'outline' as const
+    case 'saving': return 'outline' as const
+    default: return 'secondary' as const
+  }
+})
+
+function handleSave(): void {
+  projectsStore.saveCurrentProject()
+}
+
+function handleClear(): void {
+  trussStore.clearAll()
+}
+
+function handleKeyDown(e: KeyboardEvent): void {
+  // Ctrl+S — save
+  if (e.ctrlKey && e.key === 's') {
+    e.preventDefault()
+    handleSave()
+    return
+  }
+
+  // Don't intercept shortcuts when typing in inputs
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+    return
+  }
+
+  switch (e.key.toLowerCase()) {
+    case 'v': uiStore.setTool(ToolType.SELECT); break
+    case 'n': uiStore.setTool(ToolType.ADD_NODE); break
+    case 'e': uiStore.setTool(ToolType.ADD_ELEMENT); break
+    case 's': uiStore.setTool(ToolType.ADD_SUPPORT); break
+    case 'f': uiStore.setTool(ToolType.ADD_LOAD); break
+    case 'delete':
+    case 'backspace':
+      if (uiStore.selectedNodeId) {
+        trussStore.removeNode(uiStore.selectedNodeId)
+        uiStore.clearSelection()
+      } else if (uiStore.selectedElementId) {
+        trussStore.removeElement(uiStore.selectedElementId)
+        uiStore.clearSelection()
+      }
+      break
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+})
 </script>
 
 <template>
@@ -27,21 +120,25 @@ const { t } = useI18n()
           <span class="font-bold text-lg text-primary">{{ t('app.name') }}</span>
           <Separator orientation="vertical" class="h-6" />
           <input
+            :value="projectName"
+            @input="projectName = ($event.target as HTMLInputElement).value"
             type="text"
-            :value="t('header.newProject')"
             class="bg-transparent border-none text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring rounded px-2 py-1 w-48"
           />
+          <Badge :variant="saveStatusVariant" class="text-xs">
+            {{ saveStatusLabel }}
+          </Badge>
         </div>
         <div class="flex items-center gap-2">
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" @click="handleSave">
             <Save class="w-4 h-4 mr-1" />
             {{ t('header.save') }}
           </Button>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" @click="uiStore.openProjectsModal()">
             <FolderOpen class="w-4 h-4 mr-1" />
             {{ t('header.projects') }}
           </Button>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" @click="handleClear">
             <Trash2 class="w-4 h-4 mr-1" />
             {{ t('header.clearCanvas') }}
           </Button>
@@ -56,66 +153,30 @@ const { t } = useI18n()
       <div class="flex flex-1 overflow-hidden">
         <!-- Left Sidebar / Toolbar -->
         <aside class="flex flex-col w-12 border-r bg-card shrink-0 py-2 gap-1 items-center">
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button variant="ghost" size="icon" class="w-9 h-9">
-                <MousePointer2 class="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{{ t('tools.select') }} ({{ t('toolShortcuts.select') }})</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button variant="ghost" size="icon" class="w-9 h-9">
-                <Circle class="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{{ t('tools.addNode') }} ({{ t('toolShortcuts.addNode') }})</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button variant="ghost" size="icon" class="w-9 h-9">
-                <Minus class="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{{ t('tools.addElement') }} ({{ t('toolShortcuts.addElement') }})</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button variant="ghost" size="icon" class="w-9 h-9">
-                <Triangle class="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{{ t('tools.addSupport') }} ({{ t('toolShortcuts.addSupport') }})</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button variant="ghost" size="icon" class="w-9 h-9">
-                <ArrowDown class="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{{ t('tools.addLoad') }} ({{ t('toolShortcuts.addLoad') }})</p>
-            </TooltipContent>
-          </Tooltip>
+          <template v-for="tool in tools" :key="tool.type">
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="w-9 h-9"
+                  :class="{ 'bg-accent text-accent-foreground': uiStore.activeTool === tool.type }"
+                  @click="uiStore.setTool(tool.type)"
+                >
+                  <component :is="tool.icon" class="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>{{ t(tool.labelKey) }} ({{ t(tool.shortcutKey) }})</p>
+              </TooltipContent>
+            </Tooltip>
+          </template>
         </aside>
 
         <!-- Center Canvas -->
         <main class="flex-1 overflow-hidden bg-white relative">
           <div class="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-            <!-- GridCanvas will go here -->
+            <!-- GridCanvas will be added in Phase 4 -->
             <span>Canvas</span>
           </div>
         </main>

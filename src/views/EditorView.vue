@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
 import GridCanvas from '@/components/workspace/GridCanvas.vue'
+import PropertiesPanel from '@/components/toolbar/PropertiesPanel.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useAutoSave } from '@/composables/useAutoSave'
 import { useTrussStore } from '@/stores/trussStore'
@@ -181,10 +182,7 @@ onUnmounted(() => {
 
         <!-- Right Sidebar -->
         <aside class="w-72 border-l bg-card shrink-0 overflow-y-auto">
-          <div class="p-4">
-            <h3 class="font-semibold text-sm mb-2">{{ t('properties.title') }}</h3>
-            <p class="text-sm text-muted-foreground">{{ t('properties.selectElement') }}</p>
-          </div>
+          <PropertiesPanel />
         </aside>
       </div>
     </div>

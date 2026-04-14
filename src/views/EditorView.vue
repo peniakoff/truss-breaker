@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
+import GridCanvas from '@/components/workspace/GridCanvas.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useAutoSave } from '@/composables/useAutoSave'
 import { useTrussStore } from '@/stores/trussStore'
@@ -175,10 +176,7 @@ onUnmounted(() => {
 
         <!-- Center Canvas -->
         <main class="flex-1 overflow-hidden bg-white relative">
-          <div class="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-            <!-- GridCanvas will be added in Phase 4 -->
-            <span>Canvas</span>
-          </div>
+          <GridCanvas />
         </main>
 
         <!-- Right Sidebar -->

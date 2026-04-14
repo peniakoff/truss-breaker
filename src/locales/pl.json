@@ -1,0 +1,118 @@
+{
+  "app": {
+    "name": "Truss Breaker"
+  },
+  "header": {
+    "save": "Zapisz projekt",
+    "projects": "Projekty",
+    "clearCanvas": "Wyczyść obszar",
+    "calculate": "Oblicz",
+    "newProject": "Nowy projekt",
+    "saved": "Zapisano",
+    "unsaved": "Niezapisane zmiany",
+    "saving": "Zapisywanie..."
+  },
+  "tools": {
+    "select": "Wybierz / Przesuń",
+    "addNode": "Dodaj węzeł",
+    "addElement": "Dodaj pręt",
+    "addSupport": "Dodaj podporę",
+    "addLoad": "Dodaj siłę"
+  },
+  "toolShortcuts": {
+    "select": "V",
+    "addNode": "N",
+    "addElement": "E",
+    "addSupport": "S",
+    "addLoad": "F"
+  },
+  "properties": {
+    "title": "Właściwości",
+    "noSelection": "Brak zaznaczenia",
+    "selectElement": "Zaznacz element, aby zobaczyć właściwości",
+    "node": "Węzeł",
+    "element": "Pręt",
+    "support": "Podpora",
+    "load": "Obciążenie",
+    "material": "Materiał",
+    "crossSection": "Przekrój",
+    "area": "Pole przekroju",
+    "youngModulus": "Moduł Younga",
+    "yieldStrength": "Granica plastyczności",
+    "position": "Pozycja",
+    "length": "Długość",
+    "angle": "Kąt"
+  },
+  "support": {
+    "title": "Wybierz typ podpory",
+    "fixed": "Podpora stała (utwierdzona)",
+    "rollerX": "Podpora przesuwna (oś X)",
+    "rollerY": "Podpora przesuwna (oś Y)",
+    "add": "Dodaj podporę"
+  },
+  "load": {
+    "title": "Definiuj siłę skupioną",
+    "forceX": "Siła FX [kN]",
+    "forceY": "Siła FY [kN]",
+    "add": "Dodaj siłę",
+    "validation": "Co najmniej jedna wartość musi być różna od zera"
+  },
+  "results": {
+    "title": "Wyniki obliczeń",
+    "axialForces": "Siły osiowe",
+    "reactions": "Reakcje podpór",
+    "displacements": "Przemieszczenia",
+    "stresses": "Naprężenia",
+    "element": "Pręt",
+    "force": "Siła [kN]",
+    "stress": "Naprężenie [MPa]",
+    "status": "Status",
+    "tension": "Rozciąganie",
+    "compression": "Ściskanie",
+    "zero": "Zerowe",
+    "node": "Węzeł",
+    "rx": "RX [kN]",
+    "ry": "RY [kN]",
+    "dx": "dx [mm]",
+    "dy": "dy [mm]",
+    "clearResults": "Wyczyść wyniki",
+    "yieldExceeded": "Przekroczenie granicy plastyczności!",
+    "equilibriumCheck": "Kontrola równowagi",
+    "sumForces": "Suma sił",
+    "sumReactions": "Suma reakcji",
+    "staticallyDeterminate": "Układ statycznie wyznaczalny",
+    "staticallyIndeterminate": "Układ statycznie niewyznaczalny"
+  },
+  "projects": {
+    "title": "Zarządzanie projektami",
+    "name": "Nazwa projektu",
+    "lastModified": "Ostatnia modyfikacja",
+    "actions": "Akcje",
+    "load": "Wczytaj",
+    "rename": "Zmień nazwę",
+    "duplicate": "Duplikuj",
+    "delete": "Usuń",
+    "deleteConfirm": "Czy na pewno chcesz usunąć projekt",
+    "newProject": "Nowy projekt",
+    "defaultName": "Nowy projekt",
+    "noProjects": "Brak zapisanych projektów"
+  },
+  "errors": {
+    "singularMatrix": "Układ jest niestabilny — macierz sztywności jest osobliwa. Sprawdź warunki podparcia.",
+    "notEnoughNodes": "Wymagane są co najmniej 2 węzły.",
+    "notEnoughElements": "Wymagany jest co najmniej 1 pręt.",
+    "noSupports": "Wymagana jest co najmniej 1 podpora.",
+    "noLoads": "Wymagane jest co najmniej 1 obciążenie.",
+    "insufficientSupports": "Niewystarczająca liczba podpór dla stabilności (m + r < 2n).",
+    "disconnectedNode": "Węzeł {nodeId} nie jest podłączony do żadnego pręta.",
+    "calculationFailed": "Obliczenia nie powiodły się"
+  },
+  "units": {
+    "kn": "kN",
+    "mpa": "MPa",
+    "gpa": "GPa",
+    "mm": "mm",
+    "m": "m",
+    "m2": "m²"
+  }
+}

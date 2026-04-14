@@ -4,6 +4,7 @@ import GridCanvas from '@/components/workspace/GridCanvas.vue'
 import PropertiesPanel from '@/components/toolbar/PropertiesPanel.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useAutoSave } from '@/composables/useAutoSave'
+import { useTrussSolver } from '@/composables/useTrussSolver'
 import { useTrussStore } from '@/stores/trussStore'
 import { useUiStore, ToolType } from '@/stores/uiStore'
 import { useProjectsStore } from '@/stores/projectsStore'
@@ -28,6 +29,11 @@ const trussStore = useTrussStore()
 const uiStore = useUiStore()
 const projectsStore = useProjectsStore()
 const { saveStatus } = useAutoSave()
+const solver = useTrussSolver()
+
+function handleCalculate(): void {
+  solver.calculate()
+}
 
 const projectName = computed({
   get: () => projectsStore.currentProject?.name ?? '',
@@ -145,12 +151,18 @@ onUnmounted(() => {
             {{ t('header.clearCanvas') }}
           </Button>
           <Separator orientation="vertical" class="h-6" />
-          <Button variant="default" size="sm" class="bg-green-600 hover:bg-green-700 text-white">
+          <Button variant="default" size="sm" class="bg-green-600 hover:bg-green-700 text-white" :disabled="solver.isCalculating.value" @click="handleCalculate">
             <Calculator class="w-4 h-4 mr-1" />
             {{ t('header.calculate') }}
           </Button>
         </div>
       </header>
+
+      <!-- Error display -->
+      <div v-if="solver.error.value" class="absolute top-14 left-1/2 -translate-x-1/2 z-50 bg-destructive text-destructive-foreground px-4 py-2 rounded-md shadow-lg text-sm max-w-md">
+        {{ solver.error.value }}
+        <button class="ml-2 underline" @click="solver.error.value = null">×</button>
+      </div>
 
       <div class="flex flex-1 overflow-hidden">
         <!-- Left Sidebar / Toolbar -->

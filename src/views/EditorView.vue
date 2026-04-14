@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import GridCanvas from '@/components/workspace/GridCanvas.vue'
 import PropertiesPanel from '@/components/toolbar/PropertiesPanel.vue'
+import ResultsPanel from '@/components/toolbar/ResultsPanel.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useAutoSave } from '@/composables/useAutoSave'
 import { useTrussSolver } from '@/composables/useTrussSolver'
@@ -194,7 +195,8 @@ onUnmounted(() => {
 
         <!-- Right Sidebar -->
         <aside class="w-72 border-l bg-card shrink-0 overflow-y-auto">
-          <PropertiesPanel />
+          <ResultsPanel v-if="trussStore.results" />
+          <PropertiesPanel v-else />
         </aside>
       </div>
     </div>

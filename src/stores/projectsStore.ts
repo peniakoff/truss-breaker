@@ -21,6 +21,10 @@ export const useProjectsStore = defineStore('projects', () => {
     return `proj-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
   }
 
+  function cloneValue<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value)) as T
+  }
+
   function createProject(name: string): Project {
     const trussStore = useTrussStore()
     const now = new Date().toISOString()
@@ -32,7 +36,7 @@ export const useProjectsStore = defineStore('projects', () => {
       data: {
         nodes: [],
         elements: [],
-        materials: [...trussStore.materials],
+        materials: cloneValue(trussStore.materials),
         supports: [],
         loads: [],
       },
@@ -49,8 +53,8 @@ export const useProjectsStore = defineStore('projects', () => {
     const trussStore = useTrussStore()
     const project = projects.value.find((p) => p.id === currentProjectId.value)
     if (project) {
-      project.data = trussStore.exportTrussData()
-      project.results = trussStore.results
+      project.data = cloneValue(trussStore.exportTrussData())
+      project.results = trussStore.results ? cloneValue(trussStore.results) : null
       project.updatedAt = new Date().toISOString()
     }
   }
@@ -60,9 +64,9 @@ export const useProjectsStore = defineStore('projects', () => {
     const project = projects.value.find((p) => p.id === id)
     if (project) {
       currentProjectId.value = id
-      trussStore.loadFromProject(project.data)
+      trussStore.loadFromProject(cloneValue(project.data))
       if (project.results) {
-        trussStore.setResults(project.results)
+        trussStore.setResults(cloneValue(project.results))
       }
     }
   }
@@ -100,8 +104,8 @@ export const useProjectsStore = defineStore('projects', () => {
         name: `${project.name} (kopia)`,
         createdAt: now,
         updatedAt: now,
-        data: JSON.parse(JSON.stringify(project.data)),
-        results: project.results ? JSON.parse(JSON.stringify(project.results)) : null,
+        data: cloneValue(project.data),
+        results: project.results ? cloneValue(project.results) : null,
       }
       projects.value.push(duplicate)
     }

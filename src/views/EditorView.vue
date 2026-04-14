@@ -81,7 +81,7 @@ function handleClear(): void {
 
 function handleKeyDown(e: KeyboardEvent): void {
   // Ctrl+S — save
-  if (e.ctrlKey && e.key === 's') {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
     handleSave()
     return

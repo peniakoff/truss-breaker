@@ -1,51 +1,83 @@
 import { lusolve } from 'mathjs'
-import type {
-  TrussData,
-  CalculationResult,
-  NodeDisplacement,
-  ElementResult,
-  ReactionResult,
-  TrussNode,
-  TrussElement,
-  Material,
+import {
+  SupportType,
+  type Material,
+  type CalculationResult,
+  type ElementResult,
+  type NodeDisplacement,
+  type ReactionResult,
+  type Support,
+  type TrussData,
+  type TrussElement,
+  type TrussNode,
 } from '@/domain/models'
 import { elementLength, directionCosines } from '@/domain/physics/geometry'
 import { knToN, nToKn } from '@/domain/physics/units'
 
+type SolverErrorKey =
+  | 'errors.notEnoughNodes'
+  | 'errors.notEnoughElements'
+  | 'errors.noSupports'
+  | 'errors.noLoads'
+  | 'errors.insufficientSupports'
+  | 'errors.disconnectedNode'
+  | 'errors.singularMatrix'
+
 export interface SolverError {
   type: 'validation' | 'singular' | 'unknown'
-  message: string
+  messageKey: SolverErrorKey
+  params?: Record<string, string>
 }
 
 export type SolverResult =
   | { success: true; result: CalculationResult }
   | { success: false; error: SolverError }
 
+function createNodeMap(nodes: TrussNode[]): Map<string, TrussNode> {
+  return new Map(nodes.map((node) => [node.id, node]))
+}
+
+function createMaterialMap(materials: Material[]): Map<string, Material> {
+  return new Map(materials.map((material) => [material.id, material]))
+}
+
+function isXConstrained(type: Support['type']): boolean {
+  return type === SupportType.FIXED || type === SupportType.ROLLER_Y
+}
+
+function isYConstrained(type: Support['type']): boolean {
+  return type === SupportType.FIXED || type === SupportType.ROLLER_X
+}
+
 function validate(data: TrussData): SolverError | null {
   const { nodes, elements, supports, loads } = data
 
   if (nodes.length < 2) {
-    return { type: 'validation', message: 'Wymagane są co najmniej 2 węzły.' }
+    return { type: 'validation', messageKey: 'errors.notEnoughNodes' }
   }
   if (elements.length < 1) {
-    return { type: 'validation', message: 'Wymagany jest co najmniej 1 pręt.' }
+    return { type: 'validation', messageKey: 'errors.notEnoughElements' }
   }
   if (supports.length < 1) {
-    return { type: 'validation', message: 'Wymagana jest co najmniej 1 podpora.' }
+    return { type: 'validation', messageKey: 'errors.noSupports' }
   }
   if (loads.length < 1) {
-    return { type: 'validation', message: 'Wymagane jest co najmniej 1 obciążenie.' }
+    return { type: 'validation', messageKey: 'errors.noLoads' }
   }
 
   let reactionCount = 0
   for (const support of supports) {
-    reactionCount += support.type === 'FIXED' ? 2 : 1
+    reactionCount += support.type === SupportType.FIXED ? 2 : 1
   }
 
   if (elements.length + reactionCount < 2 * nodes.length) {
     return {
       type: 'validation',
-      message: `Niewystarczająca liczba podpór dla stabilności (m + r = ${elements.length + reactionCount} < 2n = ${2 * nodes.length}).`,
+      messageKey: 'errors.insufficientSupports',
+      params: {
+        sum: String(elements.length + reactionCount),
+        required: String(2 * nodes.length),
+      },
     }
   }
 
@@ -54,11 +86,13 @@ function validate(data: TrussData): SolverError | null {
     connectedNodeIds.add(el.startNodeId)
     connectedNodeIds.add(el.endNodeId)
   }
+
   for (const node of nodes) {
     if (!connectedNodeIds.has(node.id)) {
       return {
         type: 'validation',
-        message: `Węzeł ${node.id} nie jest podłączony do żadnego pręta.`,
+        messageKey: 'errors.disconnectedNode',
+        params: { nodeId: node.id },
       }
     }
   }
@@ -69,47 +103,55 @@ function validate(data: TrussData): SolverError | null {
 function buildGlobalStiffnessMatrix(
   nodes: TrussNode[],
   elements: TrussElement[],
-  materials: Material[],
+  nodeById: Map<string, TrussNode>,
+  materialById: Map<string, Material>,
   nodeIndexMap: Map<string, number>,
 ): number[][] {
   const size = 2 * nodes.length
-  const K: number[][] = Array.from({ length: size }, () => new Array<number>(size).fill(0))
+  const stiffness: number[][] = Array.from({ length: size }, () => new Array<number>(size).fill(0))
 
   for (const element of elements) {
-    const sn = nodes.find((nd) => nd.id === element.startNodeId)
-    const en = nodes.find((nd) => nd.id === element.endNodeId)
-    const mat = materials.find((m) => m.id === element.materialId)
-    if (!sn || !en || !mat) continue
+    const startNode = nodeById.get(element.startNodeId)
+    const endNode = nodeById.get(element.endNodeId)
+    const material = materialById.get(element.materialId)
+    if (!startNode || !endNode || !material) {
+      continue
+    }
 
-    const L = elementLength(sn.x, sn.y, en.x, en.y)
-    if (L === 0) continue
+    const length = elementLength(startNode.x, startNode.y, endNode.x, endNode.y)
+    if (length === 0) {
+      continue
+    }
 
-    const { cos: c, sin: s } = directionCosines(sn.x, sn.y, en.x, en.y)
-    const k = (mat.youngModulus * element.crossSection.area) / L
+    const { cos, sin } = directionCosines(startNode.x, startNode.y, endNode.x, endNode.y)
+    const factor = (material.youngModulus * element.crossSection.area) / length
+    const cc = cos * cos
+    const ss = sin * sin
+    const cs = cos * sin
 
-    const cc = c * c
-    const ss = s * s
-    const cs = c * s
-
-    const ke = [
+    const localMatrix = [
       [cc, cs, -cc, -cs],
       [cs, ss, -cs, -ss],
       [-cc, -cs, cc, cs],
       [-cs, -ss, cs, ss],
     ]
 
-    const i = nodeIndexMap.get(element.startNodeId)!
-    const j = nodeIndexMap.get(element.endNodeId)!
-    const dofs = [2 * i, 2 * i + 1, 2 * j, 2 * j + 1]
+    const startIndex = nodeIndexMap.get(element.startNodeId)
+    const endIndex = nodeIndexMap.get(element.endNodeId)
+    if (startIndex === undefined || endIndex === undefined) {
+      continue
+    }
 
-    for (let a = 0; a < 4; a++) {
-      for (let b = 0; b < 4; b++) {
-        K[dofs[a]][dofs[b]] += k * ke[a][b]
+    const dofs = [2 * startIndex, 2 * startIndex + 1, 2 * endIndex, 2 * endIndex + 1]
+
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 4; col++) {
+        stiffness[dofs[row]][dofs[col]] += factor * localMatrix[row][col]
       }
     }
   }
 
-  return K
+  return stiffness
 }
 
 function buildForceVector(
@@ -117,34 +159,43 @@ function buildForceVector(
   loads: TrussData['loads'],
   nodeIndexMap: Map<string, number>,
 ): number[] {
-  const F = new Array<number>(2 * nodes.length).fill(0)
+  const forces = new Array<number>(2 * nodes.length).fill(0)
+
   for (const load of loads) {
-    const idx = nodeIndexMap.get(load.nodeId)
-    if (idx === undefined) continue
-    F[2 * idx] += knToN(load.forceX)
-    F[2 * idx + 1] += knToN(load.forceY)
+    const index = nodeIndexMap.get(load.nodeId)
+    if (index === undefined) {
+      continue
+    }
+
+    forces[2 * index] += knToN(load.forceX)
+    forces[2 * index + 1] += knToN(load.forceY)
   }
-  return F
+
+  return forces
 }
 
 function applyBoundaryConditions(
-  K: number[][],
-  F: number[],
+  stiffness: number[][],
+  forces: number[],
   supports: TrussData['supports'],
   nodeIndexMap: Map<string, number>,
 ): void {
-  const LARGE = 1e30
-  for (const support of supports) {
-    const idx = nodeIndexMap.get(support.nodeId)
-    if (idx === undefined) continue
+  const penalty = 1e30
 
-    if (support.type === 'FIXED' || support.type === 'ROLLER_Y') {
-      K[2 * idx][2 * idx] += LARGE
-      F[2 * idx] = 0
+  for (const support of supports) {
+    const index = nodeIndexMap.get(support.nodeId)
+    if (index === undefined) {
+      continue
     }
-    if (support.type === 'FIXED' || support.type === 'ROLLER_X') {
-      K[2 * idx + 1][2 * idx + 1] += LARGE
-      F[2 * idx + 1] = 0
+
+    if (isXConstrained(support.type)) {
+      stiffness[2 * index][2 * index] += penalty
+      forces[2 * index] = 0
+    }
+
+    if (isYConstrained(support.type)) {
+      stiffness[2 * index + 1][2 * index + 1] += penalty
+      forces[2 * index + 1] = 0
     }
   }
 }
@@ -156,103 +207,102 @@ export function solve(data: TrussData): SolverResult {
   }
 
   const { nodes, elements, materials, supports, loads } = data
-
   const nodeIndexMap = new Map<string, number>()
   nodes.forEach((node, index) => {
     nodeIndexMap.set(node.id, index)
   })
 
+  const nodeById = createNodeMap(nodes)
+  const materialById = createMaterialMap(materials)
+
   try {
-    // Build clean stiffness matrix (saved for reaction calc)
-    const K_clean = buildGlobalStiffnessMatrix(nodes, elements, materials, nodeIndexMap)
+    const cleanStiffness = buildGlobalStiffnessMatrix(nodes, elements, nodeById, materialById, nodeIndexMap)
+    const appliedForces = buildForceVector(nodes, loads, nodeIndexMap)
+    const stiffness = cleanStiffness.map((row) => [...row])
+    const forces = [...appliedForces]
+    const totalDofs = 2 * nodes.length
 
-    // Build force vector (applied loads in N)
-    const F_applied = buildForceVector(nodes, loads, nodeIndexMap)
+    applyBoundaryConditions(stiffness, forces, supports, nodeIndexMap)
 
-    // Copy K and F for solving (will be modified by BCs)
-    const size = 2 * nodes.length
-    const K = K_clean.map((row) => [...row])
-    const F = [...F_applied]
+    const displacementColumn = lusolve(stiffness, forces.map((value) => [value])) as number[][]
+    const displacementsVector = displacementColumn.map((row) => row[0])
 
-    // Apply boundary conditions (penalty method)
-    applyBoundaryConditions(K, F, supports, nodeIndexMap)
-
-    // Solve K * U = F
-    const F_col = F.map((v) => [v])
-    const U_result = lusolve(K, F_col) as number[][]
-    const U = U_result.map((row) => row[0])
-
-    // Displacements (in meters)
     const displacements: NodeDisplacement[] = nodes.map((node) => {
-      const idx = nodeIndexMap.get(node.id)!
+      const index = nodeIndexMap.get(node.id)!
       return {
         nodeId: node.id,
-        dx: U[2 * idx],
-        dy: U[2 * idx + 1],
+        dx: displacementsVector[2 * index],
+        dy: displacementsVector[2 * index + 1],
       }
     })
 
-    // Axial forces and stresses
-    const elementResults: ElementResult[] = elements.map((element) => {
-      const sn = nodes.find((nd) => nd.id === element.startNodeId)!
-      const en = nodes.find((nd) => nd.id === element.endNodeId)!
-      const mat = materials.find((m) => m.id === element.materialId)!
+    const elementResults: ElementResult[] = elements.flatMap((element) => {
+      const startNode = nodeById.get(element.startNodeId)
+      const endNode = nodeById.get(element.endNodeId)
+      const material = materialById.get(element.materialId)
+      if (!startNode || !endNode || !material) {
+        return []
+      }
 
-      const L = elementLength(sn.x, sn.y, en.x, en.y)
-      const { cos: c, sin: s } = directionCosines(sn.x, sn.y, en.x, en.y)
+      const length = elementLength(startNode.x, startNode.y, endNode.x, endNode.y)
+      if (length === 0) {
+        return []
+      }
 
-      const i = nodeIndexMap.get(element.startNodeId)!
-      const j = nodeIndexMap.get(element.endNodeId)!
+      const { cos, sin } = directionCosines(startNode.x, startNode.y, endNode.x, endNode.y)
+      const startIndex = nodeIndexMap.get(element.startNodeId)!
+      const endIndex = nodeIndexMap.get(element.endNodeId)!
+      const deltaX = displacementsVector[2 * endIndex] - displacementsVector[2 * startIndex]
+      const deltaY = displacementsVector[2 * endIndex + 1] - displacementsVector[2 * startIndex + 1]
+      const deltaLength = cos * deltaX + sin * deltaY
+      const axialForceN = (material.youngModulus * element.crossSection.area / length) * deltaLength
 
-      const du = U[2 * j] - U[2 * i]
-      const dv = U[2 * j + 1] - U[2 * i + 1]
-      const deltaL = c * du + s * dv
-
-      const axialForceN = (mat.youngModulus * element.crossSection.area / L) * deltaL
-      const stress = axialForceN / element.crossSection.area
-
-      return {
+      return [{
         elementId: element.id,
         axialForce: nToKn(axialForceN),
-        stress,
-      }
+        stress: axialForceN / element.crossSection.area,
+      }]
     })
 
-    // Reactions: R = K_clean * U - F_applied (at constrained DOFs)
     const reactions: ReactionResult[] = []
     for (const support of supports) {
-      const idx = nodeIndexMap.get(support.nodeId)
-      if (idx === undefined) continue
-
-      let rx = 0
-      let ry = 0
-
-      if (support.type === 'FIXED' || support.type === 'ROLLER_Y') {
-        let sum = 0
-        for (let col = 0; col < size; col++) {
-          sum += K_clean[2 * idx][col] * U[col]
-        }
-        rx = nToKn(sum - F_applied[2 * idx])
+      const index = nodeIndexMap.get(support.nodeId)
+      if (index === undefined) {
+        continue
       }
 
-      if (support.type === 'FIXED' || support.type === 'ROLLER_X') {
+      let forceX = 0
+      let forceY = 0
+
+      if (isXConstrained(support.type)) {
         let sum = 0
-        for (let col = 0; col < size; col++) {
-          sum += K_clean[2 * idx + 1][col] * U[col]
+        for (let col = 0; col < totalDofs; col++) {
+          sum += cleanStiffness[2 * index][col] * displacementsVector[col]
         }
-        ry = nToKn(sum - F_applied[2 * idx + 1])
+        forceX = nToKn(sum - appliedForces[2 * index])
       }
 
-      reactions.push({ nodeId: support.nodeId, forceX: rx, forceY: ry })
+      if (isYConstrained(support.type)) {
+        let sum = 0
+        for (let col = 0; col < totalDofs; col++) {
+          sum += cleanStiffness[2 * index + 1][col] * displacementsVector[col]
+        }
+        forceY = nToKn(sum - appliedForces[2 * index + 1])
+      }
+
+      reactions.push({ nodeId: support.nodeId, forceX, forceY })
     }
 
-    return { success: true, result: { displacements, elementResults, reactions } }
-  } catch (_e) {
+    return {
+      success: true,
+      result: { displacements, elementResults, reactions },
+    }
+  } catch {
     return {
       success: false,
       error: {
         type: 'singular',
-        message: 'Układ jest niestabilny — macierz sztywności jest osobliwa. Sprawdź warunki podparcia.',
+        messageKey: 'errors.singularMatrix',
       },
     }
   }

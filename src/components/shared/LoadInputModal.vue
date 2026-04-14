@@ -41,8 +41,8 @@ function handleAdd(): void {
   const fx = Number(forceX.value)
   const fy = Number(forceY.value)
 
-  if (isNaN(fx) || isNaN(fy)) {
-    error.value = t('load.validation')
+  if (!Number.isFinite(fx) || !Number.isFinite(fy)) {
+    error.value = t('load.invalidNumber')
     return
   }
   if (fx === 0 && fy === 0) {

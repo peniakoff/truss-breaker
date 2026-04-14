@@ -20,7 +20,7 @@ const { t } = useI18n()
 const trussStore = useTrussStore()
 const uiStore = useUiStore()
 
-const selectedType = ref<string>(SupportType.FIXED)
+const selectedType = ref<(typeof SupportType)[keyof typeof SupportType]>(SupportType.FIXED)
 
 watch(() => uiStore.showSupportModal, (open) => {
   if (open && uiStore.modalTargetNodeId) {
@@ -31,7 +31,7 @@ watch(() => uiStore.showSupportModal, (open) => {
 
 function handleAdd(): void {
   if (uiStore.modalTargetNodeId) {
-    trussStore.addSupport(uiStore.modalTargetNodeId, selectedType.value as typeof SupportType[keyof typeof SupportType])
+    trussStore.addSupport(uiStore.modalTargetNodeId, selectedType.value)
   }
   uiStore.closeSupportModal()
 }

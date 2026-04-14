@@ -26,6 +26,10 @@ export const useTrussStore = defineStore('truss', () => {
     return `${prefix}-${nextId++}`
   }
 
+  function cloneTrussData(data: TrussData): TrussData {
+    return JSON.parse(JSON.stringify(data)) as TrussData
+  }
+
   // Getters
   const getNodeById = computed(() => {
     const map = new Map<string, TrussNode>()
@@ -195,11 +199,12 @@ export const useTrussStore = defineStore('truss', () => {
   }
 
   function loadFromProject(data: TrussData): void {
-    nodes.value = [...data.nodes]
-    elements.value = [...data.elements]
-    materials.value = [...data.materials]
-    supports.value = [...data.supports]
-    loads.value = [...data.loads]
+    const cloned = cloneTrussData(data)
+    nodes.value = cloned.nodes
+    elements.value = cloned.elements
+    materials.value = cloned.materials
+    supports.value = cloned.supports
+    loads.value = cloned.loads
     results.value = null
     // Update nextId to avoid collisions
     const allIds = [
@@ -218,13 +223,13 @@ export const useTrussStore = defineStore('truss', () => {
   }
 
   function exportTrussData(): TrussData {
-    return {
+    return cloneTrussData({
       nodes: [...nodes.value],
       elements: [...elements.value],
       materials: [...materials.value],
       supports: [...supports.value],
       loads: [...loads.value],
-    }
+    })
   }
 
   return {

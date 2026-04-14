@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { ZOOM_MAX, ZOOM_MIN } from '@/utils/constants'
 
 export const ToolType = {
   SELECT: 'SELECT',
@@ -53,7 +54,7 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   function setZoom(newZoom: number): void {
-    zoom.value = Math.max(0.2, Math.min(5, newZoom))
+    zoom.value = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom))
   }
 
   function setPan(x: number, y: number): void {

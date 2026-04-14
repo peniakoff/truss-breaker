@@ -1,5 +1,32 @@
-# Vue 3 + TypeScript + Vite
+# Truss Breaker
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+SPA w Vue 3 + TypeScript do modelowania i obliczania płaskich układów kratownicowych metodą sztywności.
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## Uruchomienie
+
+```bash
+npm install
+npm run dev
+```
+
+## Build produkcyjny
+
+```bash
+npm run build
+```
+
+## Funkcje
+
+- rysowanie węzłów, prętów, podpór i sił na interaktywnym canvasie SVG
+- zapisywanie wielu projektów w Local Storage
+- automatyczny zapis zmian
+- obliczanie przemieszczeń, sił osiowych, naprężeń i reakcji podpór
+- wizualizacja wyników na canvasie i w panelu bocznym
+
+## Założenia modelu
+
+- kratownica 2D
+- współrzędne robocze są snapowane do siatki
+- 1 jednostka siatki odpowiada 1 m modelu
+- obciążenia wejściowe podawane są w kN
+- moduł Younga w Pa, pole przekroju w m²

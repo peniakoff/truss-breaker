@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
+import { SupportType } from '@/domain/models'
 import { useTrussStore } from '@/stores/trussStore'
 import { useUiStore, ToolType } from '@/stores/uiStore'
 import { useMouseGridSnap } from '@/composables/useMouseGridSnap'
@@ -37,7 +38,13 @@ const uiStore = useUiStore()
 const svgRef = ref<SVGSVGElement | null>(null)
 
 const { snappedX, snappedY, nearestNodeId, handleMouseMove: snapMouseMove } = useMouseGridSnap()
-const { isPanning, handleWheel, handleMouseDown: navMouseDown, handleMouseMove: navMouseMove, handleMouseUp: navMouseUp } = useCanvasNavigation()
+const {
+  isPanning,
+  handleWheel,
+  handleMouseDown: navMouseDown,
+  handleMouseMove: navMouseMove,
+  handleMouseUp: navMouseUp,
+} = useCanvasNavigation()
 
 const viewBox = computed(() => {
   const x = -uiStore.panOffset.x
@@ -47,7 +54,6 @@ const viewBox = computed(() => {
   return `${x} ${y} ${w} ${h}`
 })
 
-// Grid lines
 const gridLines = computed(() => {
   const lines: { x1: number; y1: number; x2: number; y2: number; major: boolean }[] = []
   const extent = Math.max(CANVAS_WIDTH, CANVAS_HEIGHT) * 2
@@ -58,14 +64,114 @@ const gridLines = computed(() => {
     lines.push({ x1: pos, y1: 0, x2: pos, y2: extent, major })
     lines.push({ x1: 0, y1: pos, x2: extent, y2: pos, major })
   }
+
   return lines
 })
 
-// Element rendering with result colors
+const elementForceLabels = computed(() => {
+  if (!trussStore.results) {
+    return []
+  }
+
+  return trussStore.results.elementResults.flatMap((result) => {
+    const element = trussStore.elements.find((item) => item.id === result.elementId)
+    if (!element) {
+      return []
+    }
+
+    const startNode = trussStore.getNodeById(element.startNodeId)
+    const endNode = trussStore.getNodeById(element.endNodeId)
+    if (!startNode || !endNode) {
+      return []
+    }
+
+    return [{
+      elementId: result.elementId,
+      x: (startNode.x + endNode.x) / 2,
+      y: (startNode.y + endNode.y) / 2 - 8 / uiStore.zoom,
+      axialForce: result.axialForce,
+      color: result.axialForce > 0.001
+        ? COLOR_TENSION
+        : result.axialForce < -0.001
+          ? COLOR_COMPRESSION
+          : COLOR_NEUTRAL,
+    }]
+  })
+})
+
+function getForceArrow(nodeX: number, nodeY: number, fx: number, fy: number): {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  headPoints: string
+} {
+  const magnitude = Math.sqrt(fx * fx + fy * fy)
+  if (magnitude === 0) {
+    return { x1: nodeX, y1: nodeY, x2: nodeX, y2: nodeY, headPoints: '' }
+  }
+
+  const length = Math.max(magnitude * FORCE_ARROW_SCALE * GRID_SIZE, FORCE_ARROW_MIN_LENGTH)
+  const dirX = fx / magnitude
+  const dirY = fy / magnitude
+  const x2 = nodeX
+  const y2 = nodeY
+  const x1 = nodeX - dirX * length
+  const y1 = nodeY - dirY * length
+  const headSize = FORCE_ARROW_HEAD_SIZE
+  const perpX = -dirY
+  const perpY = dirX
+  const baseX = x2 - dirX * headSize
+  const baseY = y2 - dirY * headSize
+  const headPoints = `${x2},${y2} ${baseX + (perpX * headSize) / 2},${baseY + (perpY * headSize) / 2} ${baseX - (perpX * headSize) / 2},${baseY - (perpY * headSize) / 2}`
+
+  return { x1, y1, x2, y2, headPoints }
+}
+
+function forceLabel(fx: number, fy: number): string {
+  const parts: string[] = []
+  if (Math.abs(fx) > 0.001) parts.push(`FX=${fx.toFixed(1)} kN`)
+  if (Math.abs(fy) > 0.001) parts.push(`FY=${fy.toFixed(1)} kN`)
+  return parts.join(', ')
+}
+
+const loadArrows = computed(() => {
+  return trussStore.loads.flatMap((load) => {
+    const node = trussStore.getNodeById(load.nodeId)
+    if (!node) {
+      return []
+    }
+
+    return [{
+      nodeId: load.nodeId,
+      label: forceLabel(load.forceX, load.forceY),
+      arrow: getForceArrow(node.x, node.y, load.forceX, load.forceY),
+    }]
+  })
+})
+
+const reactionArrows = computed(() => {
+  if (!trussStore.results) {
+    return []
+  }
+
+  return trussStore.results.reactions.flatMap((reaction) => {
+    const node = trussStore.getNodeById(reaction.nodeId)
+    if (!node) {
+      return []
+    }
+
+    return [{
+      nodeId: reaction.nodeId,
+      arrow: getForceArrow(node.x, node.y, reaction.forceX, reaction.forceY),
+    }]
+  })
+})
+
 function getElementColor(elementId: string): string {
   if (uiStore.selectedElementId === elementId) return COLOR_ELEMENT_SELECTED
   if (trussStore.results) {
-    const result = trussStore.results.elementResults.find((r) => r.elementId === elementId)
+    const result = trussStore.results.elementResults.find((item) => item.elementId === elementId)
     if (result) {
       if (result.axialForce > 0.001) return COLOR_TENSION
       if (result.axialForce < -0.001) return COLOR_COMPRESSION
@@ -76,81 +182,43 @@ function getElementColor(elementId: string): string {
 }
 
 function getElementWidth(elementId: string): number {
-  if (uiStore.selectedElementId === elementId) return ELEMENT_WIDTH + 2
-  return ELEMENT_WIDTH
+  return uiStore.selectedElementId === elementId ? ELEMENT_WIDTH + 2 : ELEMENT_WIDTH
 }
 
-// Support path generator
 function getSupportPath(x: number, y: number, type: string): string {
-  const s = SUPPORT_SIZE
-  if (type === 'FIXED') {
-    return `M ${x} ${y} L ${x - s / 2} ${y + s} L ${x + s / 2} ${y + s} Z`
-  } else if (type === 'ROLLER_Y') {
-    return `M ${x} ${y} L ${x - s / 2} ${y + s * 0.7} L ${x + s / 2} ${y + s * 0.7} Z`
-  } else {
-    return `M ${x} ${y} L ${x - s / 2} ${y + s * 0.7} L ${x + s / 2} ${y + s * 0.7} Z`
+  const size = SUPPORT_SIZE
+  if (type === SupportType.FIXED) {
+    return `M ${x} ${y} L ${x - size / 2} ${y + size} L ${x + size / 2} ${y + size} Z`
   }
+  return `M ${x} ${y} L ${x - size / 2} ${y + size * 0.7} L ${x + size / 2} ${y + size * 0.7} Z`
 }
 
 function getRollerCircles(x: number, y: number, type: string): { cx: number; cy: number; r: number }[] {
-  const s = SUPPORT_SIZE
-  if (type === 'ROLLER_X' || type === 'ROLLER_Y') {
-    const baseY = y + s * 0.7 + 4
+  const size = SUPPORT_SIZE
+  if (type === SupportType.ROLLER_X || type === SupportType.ROLLER_Y) {
+    const baseY = y + size * 0.7 + 4
     return [
-      { cx: x - s / 4, cy: baseY, r: 3 },
-      { cx: x + s / 4, cy: baseY, r: 3 },
+      { cx: x - size / 4, cy: baseY, r: 3 },
+      { cx: x + size / 4, cy: baseY, r: 3 },
     ]
   }
   return []
 }
 
-// Force arrow computation
-function getForceArrow(nodeX: number, nodeY: number, fx: number, fy: number): {
-  x1: number; y1: number; x2: number; y2: number;
-  headPoints: string;
-} {
-  const mag = Math.sqrt(fx * fx + fy * fy)
-  if (mag === 0) return { x1: nodeX, y1: nodeY, x2: nodeX, y2: nodeY, headPoints: '' }
-
-  const len = Math.max(mag * FORCE_ARROW_SCALE * GRID_SIZE, FORCE_ARROW_MIN_LENGTH)
-  const dirX = fx / mag
-  const dirY = fy / mag
-
-  const x2 = nodeX
-  const y2 = nodeY
-  const x1 = nodeX - dirX * len
-  const y1 = nodeY - dirY * len
-
-  const headSize = FORCE_ARROW_HEAD_SIZE
-  const perpX = -dirY
-  const perpY = dirX
-  const tipX = x2
-  const tipY = y2
-  const baseX = tipX - dirX * headSize
-  const baseY = tipY - dirY * headSize
-  const headPoints = `${tipX},${tipY} ${baseX + perpX * headSize / 2},${baseY + perpY * headSize / 2} ${baseX - perpX * headSize / 2},${baseY - perpY * headSize / 2}`
-
-  return { x1, y1, x2, y2, headPoints }
-}
-
-// Node color
 function getNodeColor(nodeId: string): string {
   return uiStore.selectedNodeId === nodeId ? COLOR_NODE_SELECTED : COLOR_NODE
 }
 
-// Show ghost cursor?
 const showGhost = computed(() => {
   const ghostTools: string[] = [ToolType.ADD_NODE, ToolType.ADD_ELEMENT, ToolType.ADD_SUPPORT, ToolType.ADD_LOAD]
   return ghostTools.includes(uiStore.activeTool)
 })
 
-// In-progress element line
 const startNode = computed(() => {
   if (!uiStore.elementStartNodeId) return null
   return trussStore.getNodeById(uiStore.elementStartNodeId) ?? null
 })
 
-// Event handlers
 function onMouseMove(e: MouseEvent): void {
   if (!svgRef.value) return
   navMouseMove(e)
@@ -164,10 +232,10 @@ function onMouseDown(e: MouseEvent): void {
 }
 
 function onMouseUp(e: MouseEvent): void {
+  const wasPanning = isPanning.value
   navMouseUp()
-  if (isPanning.value) return
+  if (wasPanning) return
   if (e.button !== 0 || e.shiftKey) return
-
   handleToolClick()
 }
 
@@ -176,71 +244,88 @@ function handleToolClick(): void {
 
   if (tool === ToolType.ADD_NODE) {
     trussStore.addNode(snappedX.value, snappedY.value)
-  } else if (tool === ToolType.ADD_ELEMENT) {
+    return
+  }
+
+  if (tool === ToolType.ADD_ELEMENT) {
     if (!uiStore.elementStartNodeId) {
       let nodeId = nearestNodeId.value
       if (!nodeId) {
-        const newNode = trussStore.addNode(snappedX.value, snappedY.value)
-        nodeId = newNode.id
+        nodeId = trussStore.addNode(snappedX.value, snappedY.value).id
       }
       uiStore.elementStartNodeId = nodeId
-    } else {
-      let endNodeId = nearestNodeId.value
-      if (!endNodeId) {
-        const newNode = trussStore.addNode(snappedX.value, snappedY.value)
-        endNodeId = newNode.id
-      }
-      if (endNodeId !== uiStore.elementStartNodeId) {
-        const exists = trussStore.elements.some(
-          (el) =>
-            (el.startNodeId === uiStore.elementStartNodeId && el.endNodeId === endNodeId) ||
-            (el.startNodeId === endNodeId && el.endNodeId === uiStore.elementStartNodeId),
-        )
-        if (!exists) {
-          trussStore.addElement(uiStore.elementStartNodeId!, endNodeId)
-        }
-      }
-      uiStore.elementStartNodeId = null
+      return
     }
-  } else if (tool === ToolType.ADD_SUPPORT) {
+
+    let endNodeId = nearestNodeId.value
+    if (!endNodeId) {
+      endNodeId = trussStore.addNode(snappedX.value, snappedY.value).id
+    }
+
+    if (endNodeId !== uiStore.elementStartNodeId) {
+      const exists = trussStore.elements.some(
+        (element) =>
+          (element.startNodeId === uiStore.elementStartNodeId && element.endNodeId === endNodeId) ||
+          (element.startNodeId === endNodeId && element.endNodeId === uiStore.elementStartNodeId),
+      )
+      if (!exists) {
+        trussStore.addElement(uiStore.elementStartNodeId, endNodeId)
+      }
+    }
+
+    uiStore.elementStartNodeId = null
+    return
+  }
+
+  if (tool === ToolType.ADD_SUPPORT) {
     if (nearestNodeId.value) {
       uiStore.openSupportModal(nearestNodeId.value)
     }
-  } else if (tool === ToolType.ADD_LOAD) {
+    return
+  }
+
+  if (tool === ToolType.ADD_LOAD) {
     if (nearestNodeId.value) {
       uiStore.openLoadModal(nearestNodeId.value)
     }
-  } else if (tool === ToolType.SELECT) {
-    if (nearestNodeId.value) {
-      uiStore.selectNode(nearestNodeId.value)
-    } else {
-      const clickedElementId = findElementNearPoint(snappedX.value, snappedY.value)
-      if (clickedElementId) {
-        uiStore.selectElement(clickedElementId)
-      } else {
-        uiStore.clearSelection()
-      }
-    }
+    return
+  }
+
+  if (nearestNodeId.value) {
+    uiStore.selectNode(nearestNodeId.value)
+    return
+  }
+
+  const clickedElementId = findElementNearPoint(snappedX.value, snappedY.value)
+  if (clickedElementId) {
+    uiStore.selectElement(clickedElementId)
+  } else {
+    uiStore.clearSelection()
   }
 }
 
 function findElementNearPoint(px: number, py: number): string | null {
   const threshold = 10 / uiStore.zoom
   for (const element of trussStore.elements) {
-    const sn = trussStore.getNodeById(element.startNodeId)
-    const en = trussStore.getNodeById(element.endNodeId)
-    if (!sn || !en) continue
+    const start = trussStore.getNodeById(element.startNodeId)
+    const end = trussStore.getNodeById(element.endNodeId)
+    if (!start || !end) continue
 
-    const dist = pointToLineDistance(px, py, sn.x, sn.y, en.x, en.y)
-    if (dist < threshold) return element.id
+    const distance = pointToLineDistance(px, py, start.x, start.y, end.x, end.y)
+    if (distance < threshold) {
+      return element.id
+    }
   }
   return null
 }
 
 function pointToLineDistance(
-  px: number, py: number,
-  x1: number, y1: number,
-  x2: number, y2: number,
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
 ): number {
   const dx = x2 - x1
   const dy = y2 - y1
@@ -252,14 +337,6 @@ function pointToLineDistance(
   const projX = x1 + t * dx
   const projY = y1 + t * dy
   return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2)
-}
-
-// Force label text
-function forceLabel(fx: number, fy: number): string {
-  const parts: string[] = []
-  if (Math.abs(fx) > 0.001) parts.push(`FX=${fx.toFixed(1)} kN`)
-  if (Math.abs(fy) > 0.001) parts.push(`FY=${fy.toFixed(1)} kN`)
-  return parts.join(', ')
 }
 </script>
 
@@ -275,11 +352,10 @@ function forceLabel(fx: number, fy: number): string {
     @wheel.prevent="handleWheel"
     @contextmenu.prevent
   >
-    <!-- Grid lines -->
     <g class="grid-layer">
       <line
         v-for="(line, i) in gridLines"
-        :key="'grid-' + i"
+        :key="`grid-${i}`"
         :x1="line.x1"
         :y1="line.y1"
         :x2="line.x2"
@@ -289,7 +365,6 @@ function forceLabel(fx: number, fy: number): string {
       />
     </g>
 
-    <!-- Elements (bars) -->
     <g class="elements-layer">
       <template v-for="element in trussStore.elements" :key="element.id">
         <line
@@ -306,27 +381,23 @@ function forceLabel(fx: number, fy: number): string {
       </template>
     </g>
 
-    <!-- Element force labels (when results exist) -->
     <g v-if="trussStore.results" class="element-labels-layer">
-      <template v-for="result in trussStore.results.elementResults" :key="'label-' + result.elementId">
-        <template v-if="(() => { const el = trussStore.elements.find(e => e.id === result.elementId); if (!el) return false; const sn = trussStore.getNodeById(el.startNodeId); const en = trussStore.getNodeById(el.endNodeId); return sn && en })()">
-          <text
-            :x="(() => { const el = trussStore.elements.find(e => e.id === result.elementId)!; const sn = trussStore.getNodeById(el.startNodeId)!; const en = trussStore.getNodeById(el.endNodeId)!; return (sn.x + en.x) / 2 })()"
-            :y="(() => { const el = trussStore.elements.find(e => e.id === result.elementId)!; const sn = trussStore.getNodeById(el.startNodeId)!; const en = trussStore.getNodeById(el.endNodeId)!; return (sn.y + en.y) / 2 - 8 / uiStore.zoom })()"
-            :fill="result.axialForce > 0.001 ? COLOR_TENSION : result.axialForce < -0.001 ? COLOR_COMPRESSION : COLOR_NEUTRAL"
-            :font-size="11 / uiStore.zoom"
-            text-anchor="middle"
-            font-weight="bold"
-          >
-            {{ result.axialForce.toFixed(2) }} kN
-          </text>
-        </template>
-      </template>
+      <text
+        v-for="label in elementForceLabels"
+        :key="`label-${label.elementId}`"
+        :x="label.x"
+        :y="label.y"
+        :fill="label.color"
+        :font-size="11 / uiStore.zoom"
+        text-anchor="middle"
+        font-weight="bold"
+      >
+        {{ label.axialForce.toFixed(2) }} kN
+      </text>
     </g>
 
-    <!-- Supports -->
     <g class="supports-layer">
-      <template v-for="support in trussStore.supports" :key="'sup-' + support.nodeId">
+      <template v-for="support in trussStore.supports" :key="`sup-${support.nodeId}`">
         <template v-if="trussStore.getNodeById(support.nodeId)">
           <path
             :d="getSupportPath(trussStore.getNodeById(support.nodeId)!.x, trussStore.getNodeById(support.nodeId)!.y, support.type)"
@@ -335,18 +406,16 @@ function forceLabel(fx: number, fy: number): string {
             :stroke="COLOR_SUPPORT"
             :stroke-width="1.5 / uiStore.zoom"
           />
-          <!-- Roller circles -->
           <circle
-            v-for="(circ, ci) in getRollerCircles(trussStore.getNodeById(support.nodeId)!.x, trussStore.getNodeById(support.nodeId)!.y, support.type)"
-            :key="'roller-' + support.nodeId + '-' + ci"
-            :cx="circ.cx"
-            :cy="circ.cy"
-            :r="circ.r / uiStore.zoom"
+            v-for="(circle, circleIndex) in getRollerCircles(trussStore.getNodeById(support.nodeId)!.x, trussStore.getNodeById(support.nodeId)!.y, support.type)"
+            :key="`roller-${support.nodeId}-${circleIndex}`"
+            :cx="circle.cx"
+            :cy="circle.cy"
+            :r="circle.r / uiStore.zoom"
             :fill="COLOR_SUPPORT"
           />
-          <!-- Ground line for fixed support -->
           <line
-            v-if="support.type === 'FIXED'"
+            v-if="support.type === SupportType.FIXED"
             :x1="trussStore.getNodeById(support.nodeId)!.x - SUPPORT_SIZE / 2 - 3"
             :y1="trussStore.getNodeById(support.nodeId)!.y + SUPPORT_SIZE"
             :x2="trussStore.getNodeById(support.nodeId)!.x + SUPPORT_SIZE / 2 + 3"
@@ -358,57 +427,44 @@ function forceLabel(fx: number, fy: number): string {
       </template>
     </g>
 
-    <!-- Applied loads (forces) -->
     <g class="loads-layer">
-      <template v-for="load in trussStore.loads" :key="'load-' + load.nodeId">
-        <template v-if="trussStore.getNodeById(load.nodeId)">
-          <line
-            :x1="getForceArrow(trussStore.getNodeById(load.nodeId)!.x, trussStore.getNodeById(load.nodeId)!.y, load.forceX, load.forceY).x1"
-            :y1="getForceArrow(trussStore.getNodeById(load.nodeId)!.x, trussStore.getNodeById(load.nodeId)!.y, load.forceX, load.forceY).y1"
-            :x2="getForceArrow(trussStore.getNodeById(load.nodeId)!.x, trussStore.getNodeById(load.nodeId)!.y, load.forceX, load.forceY).x2"
-            :y2="getForceArrow(trussStore.getNodeById(load.nodeId)!.x, trussStore.getNodeById(load.nodeId)!.y, load.forceX, load.forceY).y2"
-            :stroke="COLOR_LOAD"
-            :stroke-width="2 / uiStore.zoom"
-          />
-          <polygon
-            :points="getForceArrow(trussStore.getNodeById(load.nodeId)!.x, trussStore.getNodeById(load.nodeId)!.y, load.forceX, load.forceY).headPoints"
-            :fill="COLOR_LOAD"
-          />
-          <text
-            :x="getForceArrow(trussStore.getNodeById(load.nodeId)!.x, trussStore.getNodeById(load.nodeId)!.y, load.forceX, load.forceY).x1"
-            :y="getForceArrow(trussStore.getNodeById(load.nodeId)!.x, trussStore.getNodeById(load.nodeId)!.y, load.forceX, load.forceY).y1 - 5 / uiStore.zoom"
-            :fill="COLOR_LOAD"
-            :font-size="10 / uiStore.zoom"
-            text-anchor="middle"
-          >
-            {{ forceLabel(load.forceX, load.forceY) }}
-          </text>
-        </template>
+      <template v-for="load in loadArrows" :key="`load-${load.nodeId}`">
+        <line
+          :x1="load.arrow.x1"
+          :y1="load.arrow.y1"
+          :x2="load.arrow.x2"
+          :y2="load.arrow.y2"
+          :stroke="COLOR_LOAD"
+          :stroke-width="2 / uiStore.zoom"
+        />
+        <polygon :points="load.arrow.headPoints" :fill="COLOR_LOAD" />
+        <text
+          :x="load.arrow.x1"
+          :y="load.arrow.y1 - 5 / uiStore.zoom"
+          :fill="COLOR_LOAD"
+          :font-size="10 / uiStore.zoom"
+          text-anchor="middle"
+        >
+          {{ load.label }}
+        </text>
       </template>
     </g>
 
-    <!-- Reaction arrows (when results exist) -->
     <g v-if="trussStore.results" class="reactions-layer">
-      <template v-for="reaction in trussStore.results.reactions" :key="'react-' + reaction.nodeId">
-        <template v-if="trussStore.getNodeById(reaction.nodeId)">
-          <line
-            :x1="getForceArrow(trussStore.getNodeById(reaction.nodeId)!.x, trussStore.getNodeById(reaction.nodeId)!.y, reaction.forceX, reaction.forceY).x1"
-            :y1="getForceArrow(trussStore.getNodeById(reaction.nodeId)!.x, trussStore.getNodeById(reaction.nodeId)!.y, reaction.forceX, reaction.forceY).y1"
-            :x2="getForceArrow(trussStore.getNodeById(reaction.nodeId)!.x, trussStore.getNodeById(reaction.nodeId)!.y, reaction.forceX, reaction.forceY).x2"
-            :y2="getForceArrow(trussStore.getNodeById(reaction.nodeId)!.x, trussStore.getNodeById(reaction.nodeId)!.y, reaction.forceX, reaction.forceY).y2"
-            :stroke="COLOR_REACTION"
-            :stroke-width="2 / uiStore.zoom"
-            stroke-dasharray="4"
-          />
-          <polygon
-            :points="getForceArrow(trussStore.getNodeById(reaction.nodeId)!.x, trussStore.getNodeById(reaction.nodeId)!.y, reaction.forceX, reaction.forceY).headPoints"
-            :fill="COLOR_REACTION"
-          />
-        </template>
+      <template v-for="reaction in reactionArrows" :key="`react-${reaction.nodeId}`">
+        <line
+          :x1="reaction.arrow.x1"
+          :y1="reaction.arrow.y1"
+          :x2="reaction.arrow.x2"
+          :y2="reaction.arrow.y2"
+          :stroke="COLOR_REACTION"
+          :stroke-width="2 / uiStore.zoom"
+          stroke-dasharray="4"
+        />
+        <polygon :points="reaction.arrow.headPoints" :fill="COLOR_REACTION" />
       </template>
     </g>
 
-    <!-- Nodes -->
     <g class="nodes-layer">
       <circle
         v-for="node in trussStore.nodes"
@@ -423,7 +479,6 @@ function forceLabel(fx: number, fy: number): string {
       />
     </g>
 
-    <!-- Ghost cursor -->
     <g v-if="showGhost" class="ghost-layer">
       <circle
         :cx="snappedX"
@@ -437,7 +492,6 @@ function forceLabel(fx: number, fy: number): string {
       />
     </g>
 
-    <!-- In-progress element line -->
     <line
       v-if="startNode"
       :x1="startNode.x"

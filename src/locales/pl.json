@@ -55,6 +55,7 @@
     "forceX": "Siła FX [kN]",
     "forceY": "Siła FY [kN]",
     "add": "Dodaj siłę",
+    "invalidNumber": "Wprowadź prawidłowe wartości liczbowe",
     "validation": "Co najmniej jedna wartość musi być różna od zera"
   },
   "results": {
@@ -103,7 +104,7 @@
     "notEnoughElements": "Wymagany jest co najmniej 1 pręt.",
     "noSupports": "Wymagana jest co najmniej 1 podpora.",
     "noLoads": "Wymagane jest co najmniej 1 obciążenie.",
-    "insufficientSupports": "Niewystarczająca liczba podpór dla stabilności (m + r < 2n).",
+    "insufficientSupports": "Niewystarczająca liczba podpór dla stabilności (m + r = {sum} < 2n = {required}).",
     "disconnectedNode": "Węzeł {nodeId} nie jest podłączony do żadnego pręta.",
     "calculationFailed": "Obliczenia nie powiodły się"
   },

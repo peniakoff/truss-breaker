@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export enum ToolType {
-  SELECT = 'SELECT',
-  ADD_NODE = 'ADD_NODE',
-  ADD_ELEMENT = 'ADD_ELEMENT',
-  ADD_SUPPORT = 'ADD_SUPPORT',
-  ADD_LOAD = 'ADD_LOAD',
-}
+export const ToolType = {
+  SELECT: 'SELECT',
+  ADD_NODE: 'ADD_NODE',
+  ADD_ELEMENT: 'ADD_ELEMENT',
+  ADD_SUPPORT: 'ADD_SUPPORT',
+  ADD_LOAD: 'ADD_LOAD',
+} as const
+
+export type ToolType = (typeof ToolType)[keyof typeof ToolType]
 
 export const useUiStore = defineStore('ui', () => {
   const activeTool = ref<ToolType>(ToolType.SELECT)

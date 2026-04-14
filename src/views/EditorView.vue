@@ -28,7 +28,7 @@ const { t } = useI18n()
           <Separator orientation="vertical" class="h-6" />
           <input
             type="text"
-            value="Nowy projekt"
+            :value="t('header.newProject')"
             class="bg-transparent border-none text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring rounded px-2 py-1 w-48"
           />
         </div>

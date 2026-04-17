@@ -58,10 +58,10 @@ test.describe('Grid rendering', () => {
     expect(count).toBeGreaterThan(0)
   })
 
-  test('should have both major and minor grid lines', async ({ page }) => {
+  test('should render major grid lines on the canvas', async ({ page }) => {
     await page.goto('/')
-    const allLines = page.locator('main svg .grid-layer line')
-    const count = await allLines.count()
+    const majorLines = page.locator('main svg .grid-layer line')
+    const count = await majorLines.count()
     expect(count).toBeGreaterThan(10)
   })
 })

@@ -131,6 +131,23 @@ export const useTrussStore = defineStore('truss', () => {
     const element = elements.value.find((el) => el.id === elementId)
     if (!element) return null
 
+    const startNode = nodes.value.find((n) => n.id === element.startNodeId)
+    const endNode = nodes.value.find((n) => n.id === element.endNodeId)
+    if (!startNode || !endNode) return null
+
+    // Guard: if split point is too close to an existing endpoint, return that node
+    const epsilonSq = 1 // 1px² tolerance (avoids sqrt for distance checks)
+    const distToStartSq = (x - startNode.x) ** 2 + (y - startNode.y) ** 2
+    const distToEndSq = (x - endNode.x) ** 2 + (y - endNode.y) ** 2
+    if (distToStartSq < epsilonSq) return startNode.id
+    if (distToEndSq < epsilonSq) return endNode.id
+
+    // Guard: if a node already exists at this position, return it
+    const existingNode = nodes.value.find(
+      (n) => (x - n.x) ** 2 + (y - n.y) ** 2 < epsilonSq,
+    )
+    if (existingNode) return existingNode.id
+
     const startNodeId = element.startNodeId
     const endNodeId = element.endNodeId
     const materialId = element.materialId

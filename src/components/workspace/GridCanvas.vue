@@ -42,7 +42,7 @@ const trussStore = useTrussStore()
 const uiStore = useUiStore()
 const svgRef = ref<SVGSVGElement | null>(null)
 
-const { snappedX, snappedY, nearestNodeId, handleMouseMove: snapMouseMove } = useMouseGridSnap()
+const { snappedX, snappedY, rawX, rawY, nearestNodeId, handleMouseMove: snapMouseMove } = useMouseGridSnap()
 const {
   isPanning,
   handleWheel,
@@ -315,7 +315,7 @@ function handleToolClick(): void {
     if (nearestNodeId.value) {
       uiStore.openSupportModal(nearestNodeId.value)
     } else {
-      const hit = findElementAndProjection(snappedX.value, snappedY.value)
+      const hit = findElementAndProjection(rawX.value, rawY.value)
       if (hit) {
         const newNodeId = trussStore.splitElement(hit.elementId, hit.x, hit.y)
         if (newNodeId) {
@@ -330,7 +330,7 @@ function handleToolClick(): void {
     if (nearestNodeId.value) {
       uiStore.openLoadModal(nearestNodeId.value)
     } else {
-      const hit = findElementAndProjection(snappedX.value, snappedY.value)
+      const hit = findElementAndProjection(rawX.value, rawY.value)
       if (hit) {
         const newNodeId = trussStore.splitElement(hit.elementId, hit.x, hit.y)
         if (newNodeId) {

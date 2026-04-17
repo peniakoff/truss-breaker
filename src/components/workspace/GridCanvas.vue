@@ -7,13 +7,15 @@ import { useMouseGridSnap } from '@/composables/useMouseGridSnap'
 import { useCanvasNavigation } from '@/composables/useCanvasNavigation'
 import {
   GRID_SIZE,
+  GRID_MINOR_SIZE,
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
-  GRID_COLOR,
+  GRID_MINOR_COLOR,
   GRID_LINE_WIDTH,
   GRID_MAJOR_EVERY,
   GRID_MAJOR_COLOR,
   GRID_MAJOR_LINE_WIDTH,
+  GRID_MINOR_VISIBLE_ZOOM_THRESHOLD,
   COLOR_NODE,
   COLOR_NODE_SELECTED,
   COLOR_ELEMENT_DEFAULT,
@@ -31,13 +33,16 @@ import {
   FORCE_ARROW_HEAD_SIZE,
   FORCE_ARROW_SCALE,
   COLOR_REACTION,
+  FONT_SIZE_ELEMENT_LABEL,
+  FONT_SIZE_FORCE_LABEL,
+  FONT_SIZE_SUPPORT_LABEL,
 } from '@/utils/constants'
 
 const trussStore = useTrussStore()
 const uiStore = useUiStore()
 const svgRef = ref<SVGSVGElement | null>(null)
 
-const { snappedX, snappedY, nearestNodeId, handleMouseMove: snapMouseMove } = useMouseGridSnap()
+const { snappedX, snappedY, rawX, rawY, nearestNodeId, handleMouseMove: snapMouseMove } = useMouseGridSnap()
 const {
   isPanning,
   handleWheel,
@@ -54,15 +59,31 @@ const viewBox = computed(() => {
   return `${x} ${y} ${w} ${h}`
 })
 
-const gridLines = computed(() => {
-  const lines: { x1: number; y1: number; x2: number; y2: number; major: boolean }[] = []
+const majorGridLines = computed(() => {
+  const lines: { x1: number; y1: number; x2: number; y2: number }[] = []
   const extent = Math.max(CANVAS_WIDTH, CANVAS_HEIGHT) * 2
 
-  for (let i = 0; i <= extent / GRID_SIZE; i++) {
-    const pos = i * GRID_SIZE
-    const major = i % GRID_MAJOR_EVERY === 0
-    lines.push({ x1: pos, y1: 0, x2: pos, y2: extent, major })
-    lines.push({ x1: 0, y1: pos, x2: extent, y2: pos, major })
+  for (let i = 0; i <= extent / GRID_MINOR_SIZE; i++) {
+    if (i % GRID_MAJOR_EVERY !== 0) continue
+    const pos = i * GRID_MINOR_SIZE
+    lines.push({ x1: pos, y1: 0, x2: pos, y2: extent })
+    lines.push({ x1: 0, y1: pos, x2: extent, y2: pos })
+  }
+
+  return lines
+})
+
+const minorGridLines = computed(() => {
+  if (uiStore.zoom < GRID_MINOR_VISIBLE_ZOOM_THRESHOLD) return []
+
+  const lines: { x1: number; y1: number; x2: number; y2: number }[] = []
+  const extent = Math.max(CANVAS_WIDTH, CANVAS_HEIGHT) * 2
+
+  for (let i = 0; i <= extent / GRID_MINOR_SIZE; i++) {
+    if (i % GRID_MAJOR_EVERY === 0) continue
+    const pos = i * GRID_MINOR_SIZE
+    lines.push({ x1: pos, y1: 0, x2: pos, y2: extent })
+    lines.push({ x1: 0, y1: pos, x2: extent, y2: pos })
   }
 
   return lines
@@ -88,7 +109,7 @@ const elementForceLabels = computed(() => {
     return [{
       elementId: result.elementId,
       x: (startNode.x + endNode.x) / 2,
-      y: (startNode.y + endNode.y) / 2 - 8 / uiStore.zoom,
+      y: (startNode.y + endNode.y) / 2 - 14 / uiStore.zoom,
       axialForce: result.axialForce,
       color: result.axialForce > 0.001
         ? COLOR_TENSION
@@ -163,6 +184,7 @@ const reactionArrows = computed(() => {
 
     return [{
       nodeId: reaction.nodeId,
+      label: forceLabel(reaction.forceX, reaction.forceY),
       arrow: getForceArrow(node.x, node.y, reaction.forceX, reaction.forceY),
     }]
   })
@@ -203,6 +225,18 @@ function getRollerCircles(x: number, y: number, type: string): { cx: number; cy:
     ]
   }
   return []
+}
+
+function getSupportLabel(type: string): string {
+  if (type === SupportType.FIXED) return 'Stała'
+  if (type === SupportType.ROLLER_X) return 'Przesuwna X'
+  if (type === SupportType.ROLLER_Y) return 'Przesuwna Y'
+  return ''
+}
+
+function getSupportLabelY(y: number, type: string): number {
+  if (type === SupportType.FIXED) return y + SUPPORT_SIZE + 16
+  return y + SUPPORT_SIZE * 0.7 + 16
 }
 
 function getNodeColor(nodeId: string): string {
@@ -280,6 +314,14 @@ function handleToolClick(): void {
   if (tool === ToolType.ADD_SUPPORT) {
     if (nearestNodeId.value) {
       uiStore.openSupportModal(nearestNodeId.value)
+    } else {
+      const hit = findElementAndProjection(rawX.value, rawY.value)
+      if (hit) {
+        const newNodeId = trussStore.splitElement(hit.elementId, hit.x, hit.y)
+        if (newNodeId) {
+          uiStore.openSupportModal(newNodeId)
+        }
+      }
     }
     return
   }
@@ -287,6 +329,14 @@ function handleToolClick(): void {
   if (tool === ToolType.ADD_LOAD) {
     if (nearestNodeId.value) {
       uiStore.openLoadModal(nearestNodeId.value)
+    } else {
+      const hit = findElementAndProjection(rawX.value, rawY.value)
+      if (hit) {
+        const newNodeId = trussStore.splitElement(hit.elementId, hit.x, hit.y)
+        if (newNodeId) {
+          uiStore.openLoadModal(newNodeId)
+        }
+      }
     }
     return
   }
@@ -304,6 +354,22 @@ function handleToolClick(): void {
   }
 }
 
+function findElementAndProjection(px: number, py: number): { elementId: string; x: number; y: number } | null {
+  const threshold = 10 / uiStore.zoom
+  for (const element of trussStore.elements) {
+    const start = trussStore.getNodeById(element.startNodeId)
+    const end = trussStore.getNodeById(element.endNodeId)
+    if (!start || !end) continue
+
+    const distance = pointToLineDistance(px, py, start.x, start.y, end.x, end.y)
+    if (distance < threshold) {
+      const proj = projectPointOnLine(px, py, start.x, start.y, end.x, end.y)
+      return { elementId: element.id, x: proj.x, y: proj.y }
+    }
+  }
+  return null
+}
+
 function findElementNearPoint(px: number, py: number): string | null {
   const threshold = 10 / uiStore.zoom
   for (const element of trussStore.elements) {
@@ -319,6 +385,24 @@ function findElementNearPoint(px: number, py: number): string | null {
   return null
 }
 
+function projectPointOnLine(
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): { x: number; y: number; t: number } {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return { x: x1, y: y1, t: 0 }
+
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq
+  t = Math.max(0, Math.min(1, t))
+  return { x: x1 + t * dx, y: y1 + t * dy, t }
+}
+
 function pointToLineDistance(
   px: number,
   py: number,
@@ -327,16 +411,8 @@ function pointToLineDistance(
   x2: number,
   y2: number,
 ): number {
-  const dx = x2 - x1
-  const dy = y2 - y1
-  const lenSq = dx * dx + dy * dy
-  if (lenSq === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2)
-
-  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq
-  t = Math.max(0, Math.min(1, t))
-  const projX = x1 + t * dx
-  const projY = y1 + t * dy
-  return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2)
+  const proj = projectPointOnLine(px, py, x1, y1, x2, y2)
+  return Math.sqrt((px - proj.x) ** 2 + (py - proj.y) ** 2)
 }
 </script>
 
@@ -354,14 +430,24 @@ function pointToLineDistance(
   >
     <g class="grid-layer">
       <line
-        v-for="(line, i) in gridLines"
-        :key="`grid-${i}`"
+        v-for="(line, i) in minorGridLines"
+        :key="`grid-minor-${i}`"
         :x1="line.x1"
         :y1="line.y1"
         :x2="line.x2"
         :y2="line.y2"
-        :stroke="line.major ? GRID_MAJOR_COLOR : GRID_COLOR"
-        :stroke-width="(line.major ? GRID_MAJOR_LINE_WIDTH : GRID_LINE_WIDTH) / uiStore.zoom"
+        :stroke="GRID_MINOR_COLOR"
+        :stroke-width="GRID_LINE_WIDTH / uiStore.zoom"
+      />
+      <line
+        v-for="(line, i) in majorGridLines"
+        :key="`grid-major-${i}`"
+        :x1="line.x1"
+        :y1="line.y1"
+        :x2="line.x2"
+        :y2="line.y2"
+        :stroke="GRID_MAJOR_COLOR"
+        :stroke-width="GRID_MAJOR_LINE_WIDTH / uiStore.zoom"
       />
     </g>
 
@@ -388,7 +474,7 @@ function pointToLineDistance(
         :x="label.x"
         :y="label.y"
         :fill="label.color"
-        :font-size="11 / uiStore.zoom"
+        :font-size="FONT_SIZE_ELEMENT_LABEL / uiStore.zoom"
         text-anchor="middle"
         font-weight="bold"
       >
@@ -423,6 +509,16 @@ function pointToLineDistance(
             :stroke="COLOR_SUPPORT"
             :stroke-width="2 / uiStore.zoom"
           />
+          <text
+            :x="trussStore.getNodeById(support.nodeId)!.x"
+            :y="getSupportLabelY(trussStore.getNodeById(support.nodeId)!.y, support.type)"
+            :fill="COLOR_SUPPORT"
+            :font-size="FONT_SIZE_SUPPORT_LABEL / uiStore.zoom"
+            text-anchor="middle"
+            class="support-label"
+          >
+            {{ getSupportLabel(support.type) }}
+          </text>
         </template>
       </template>
     </g>
@@ -442,7 +538,7 @@ function pointToLineDistance(
           :x="load.arrow.x1"
           :y="load.arrow.y1 - 5 / uiStore.zoom"
           :fill="COLOR_LOAD"
-          :font-size="10 / uiStore.zoom"
+          :font-size="FONT_SIZE_FORCE_LABEL / uiStore.zoom"
           text-anchor="middle"
         >
           {{ load.label }}
@@ -462,6 +558,16 @@ function pointToLineDistance(
           stroke-dasharray="4"
         />
         <polygon :points="reaction.arrow.headPoints" :fill="COLOR_REACTION" />
+        <text
+          :x="reaction.arrow.x1"
+          :y="reaction.arrow.y1 - 5 / uiStore.zoom"
+          :fill="COLOR_REACTION"
+          :font-size="FONT_SIZE_FORCE_LABEL / uiStore.zoom"
+          text-anchor="middle"
+          class="reaction-label"
+        >
+          {{ reaction.label }}
+        </text>
       </template>
     </g>
 

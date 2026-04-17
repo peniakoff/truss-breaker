@@ -1,13 +1,16 @@
 // Grid configuration
-export const GRID_SIZE = 50 // pixels per grid unit
+export const GRID_SIZE = 50 // pixels per grid unit (1 meter)
+export const GRID_MINOR_SIZE = GRID_SIZE / 10 // pixels per minor grid unit (0.1 m = 10 cm)
 export const GRID_SNAP_THRESHOLD = 15 // pixels
 export const CANVAS_WIDTH = 4000 // total canvas width in px
 export const CANVAS_HEIGHT = 3000 // total canvas height in px
 export const GRID_COLOR = '#e5e7eb'
+export const GRID_MINOR_COLOR = '#f3f4f6' // lighter gray for minor grid lines
 export const GRID_LINE_WIDTH = 0.5
-export const GRID_MAJOR_EVERY = 5 // major grid line every N units
+export const GRID_MAJOR_EVERY = 10 // major grid line every N minor units (= every 1 m)
 export const GRID_MAJOR_COLOR = '#d1d5db'
 export const GRID_MAJOR_LINE_WIDTH = 1
+export const GRID_MINOR_VISIBLE_ZOOM_THRESHOLD = 1.5 // minor lines visible only at zoom >= this
 
 // Default material properties (Steel S235)
 export const DEFAULT_YOUNG_MODULUS = 210e9 // Pa (210 GPa)
@@ -49,3 +52,8 @@ export const SUPPORT_SIZE = 20
 export const ZOOM_MIN = 0.2
 export const ZOOM_MAX = 5
 export const ZOOM_STEP = 0.1
+
+// Font sizes for technical drawing labels
+export const FONT_SIZE_ELEMENT_LABEL = 16
+export const FONT_SIZE_FORCE_LABEL = 14
+export const FONT_SIZE_SUPPORT_LABEL = 12

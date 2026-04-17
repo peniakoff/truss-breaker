@@ -127,6 +127,59 @@ export const useTrussStore = defineStore('truss', () => {
     clearResults()
   }
 
+  function splitElement(elementId: string, x: number, y: number): string | null {
+    const element = elements.value.find((el) => el.id === elementId)
+    if (!element) return null
+
+    const startNode = nodes.value.find((n) => n.id === element.startNodeId)
+    const endNode = nodes.value.find((n) => n.id === element.endNodeId)
+    if (!startNode || !endNode) return null
+
+    // Guard: if split point is too close to an existing endpoint, return that node
+    const epsilonSq = 1 // 1px² tolerance (avoids sqrt for distance checks)
+    const distToStartSq = (x - startNode.x) ** 2 + (y - startNode.y) ** 2
+    const distToEndSq = (x - endNode.x) ** 2 + (y - endNode.y) ** 2
+    if (distToStartSq < epsilonSq) return startNode.id
+    if (distToEndSq < epsilonSq) return endNode.id
+
+    // Guard: if a node already exists at this position, return it
+    const existingNode = nodes.value.find(
+      (n) => (x - n.x) ** 2 + (y - n.y) ** 2 < epsilonSq,
+    )
+    if (existingNode) return existingNode.id
+
+    const startNodeId = element.startNodeId
+    const endNodeId = element.endNodeId
+    const materialId = element.materialId
+    const crossSection = { ...element.crossSection }
+
+    // Create the new node at the split point
+    const newNode = addNode(x, y)
+
+    // Remove the original element
+    elements.value = elements.value.filter((el) => el.id !== elementId)
+
+    // Create two new elements with same material and cross-section
+    const el1: TrussElement = {
+      id: generateId('e'),
+      startNodeId,
+      endNodeId: newNode.id,
+      materialId,
+      crossSection: { ...crossSection },
+    }
+    const el2: TrussElement = {
+      id: generateId('e'),
+      startNodeId: newNode.id,
+      endNodeId,
+      materialId,
+      crossSection: { ...crossSection },
+    }
+    elements.value.push(el1, el2)
+
+    clearResults()
+    return newNode.id
+  }
+
   function updateElement(id: string, updates: Partial<Pick<TrussElement, 'materialId' | 'crossSection'>>): void {
     const element = elements.value.find((el) => el.id === id)
     if (element) {
@@ -253,6 +306,7 @@ export const useTrussStore = defineStore('truss', () => {
     updateNode,
     addElement,
     removeElement,
+    splitElement,
     updateElement,
     addSupport,
     removeSupport,

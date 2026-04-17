@@ -22,14 +22,17 @@ export function useMouseGridSnap(): GridSnapResult {
   function screenToSvg(
     e: MouseEvent,
     svgEl: SVGSVGElement,
-    zoom: number,
-    panX: number,
-    panY: number,
-  ): { x: number; y: number } {
-    const rect = svgEl.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / zoom - panX
-    const y = (e.clientY - rect.top) / zoom - panY
-    return { x, y }
+    _zoom: number,
+    _panX: number,
+    _panY: number,
+  ): { x: number; y: number } | null {
+    const ctm = svgEl.getScreenCTM()
+    if (!ctm) {
+      return null
+    }
+    const point = new DOMPoint(e.clientX, e.clientY)
+    const svgPoint = point.matrixTransform(ctm.inverse())
+    return { x: svgPoint.x, y: svgPoint.y }
   }
 
   function snapToGrid(val: number): number {
@@ -43,7 +46,10 @@ export function useMouseGridSnap(): GridSnapResult {
     panX: number,
     panY: number,
   ): void {
-    const { x, y } = screenToSvg(e, svgEl, zoom, panX, panY)
+    const result = screenToSvg(e, svgEl, zoom, panX, panY)
+    if (!result) return // keep last known coordinates when CTM is unavailable
+
+    const { x, y } = result
     rawX.value = x
     rawY.value = y
 

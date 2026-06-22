@@ -53,7 +53,7 @@ The solver (`StiffnessMatrixSolver.ts`) is framework-independent. You can extend
 | Change | Location |
 |--------|----------|
 | Solver / FEA math | `src/domain/solvers/StiffnessMatrixSolver.ts` |
-| Data models | `src/domain/models/` |
+| Data models | `src/domain/models/` — `Load` supports nodal (`nodeId`) and member (`elementId` + `position`) forces |
 | Canvas rendering | `src/components/workspace/GridCanvas.vue` |
 | Properties panel | `src/components/toolbar/PropertiesPanel.vue` |
 | Results panel | `src/components/toolbar/ResultsPanel.vue` |

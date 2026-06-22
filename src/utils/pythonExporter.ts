@@ -1,5 +1,6 @@
 import type { TrussData, TrussNode } from '@/domain/models'
 import { SupportType } from '@/domain/models'
+import { distributeLoadsToNodes } from '@/domain/physics/loadDistribution'
 import { GRID_SIZE } from '@/utils/constants'
 
 /** Canvas Y is down; anastruct uses Y up — flip vertical axis. */
@@ -82,14 +83,16 @@ export function generatePythonScript(data: TrussData, projectName = 'truss'): st
   }
 
   lines.push('', '# --- Loads (kN → N, Fy flipped for Y-up) ---')
-  for (const load of loads) {
-    const node = nodes.find((n) => n.id === load.nodeId)
+  const nodalLoads = distributeLoadsToNodes(loads, elements)
+  for (const contribution of nodalLoads) {
+    const node = nodes.find((n) => n.id === contribution.nodeId)
     if (!node) continue
     const { x, y } = toAnastructCoords(node)
-    const fx = (load.forceX * 1000).toFixed(1)
-    const fy = (-load.forceY * 1000).toFixed(1)
+    const fx = (contribution.forceX * 1000).toFixed(1)
+    const fy = (-contribution.forceY * 1000).toFixed(1)
+    if (contribution.forceX === 0 && contribution.forceY === 0) continue
     lines.push(
-      `ss.point_load(find_node_id(${formatCoord(x)}, ${formatCoord(y)}), Fx=${fx}, Fy=${fy})  # ${load.nodeId}`,
+      `ss.point_load(find_node_id(${formatCoord(x)}, ${formatCoord(y)}), Fx=${fx}, Fy=${fy})  # ${contribution.nodeId}`,
     )
   }
 

@@ -25,6 +25,7 @@ import {
   Calculator,
   Download,
   FileText,
+  X,
 } from 'lucide-vue-next'
 import { generatePythonScript, downloadPythonScript } from '@/utils/pythonExporter'
 import { generatePdfReport } from '@/utils/pdfReportGenerator'
@@ -208,13 +209,34 @@ onUnmounted(() => {
       </header>
 
       <!-- Error display -->
-      <div v-if="solver.error.value" class="absolute top-14 left-1/2 -translate-x-1/2 z-50 bg-destructive text-destructive-foreground px-4 py-2 rounded-md shadow-lg text-sm max-w-md">
-        {{ solver.error.value }}
-        <button class="ml-2 underline" @click="solver.error.value = null">×</button>
+      <div
+        v-if="solver.error.value"
+        class="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-start gap-2 bg-destructive text-destructive-foreground px-4 py-2 rounded-md shadow-lg text-sm max-w-md"
+      >
+        <span class="flex-1">{{ solver.error.value }}</span>
+        <button
+          type="button"
+          class="shrink-0 rounded p-1 hover:bg-destructive-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive-foreground"
+          :aria-label="t('common.close')"
+          @click="solver.error.value = null"
+        >
+          <X class="w-4 h-4" />
+        </button>
       </div>
-      <div v-if="uiStore.exportError" class="absolute top-14 left-1/2 -translate-x-1/2 z-50 bg-amber-600 text-white px-4 py-2 rounded-md shadow-lg text-sm max-w-md" :class="{ 'top-24': solver.error.value }">
-        {{ uiStore.exportError }}
-        <button class="ml-2 underline" @click="uiStore.setExportError(null)">{{ t('common.dismiss') }}</button>
+      <div
+        v-if="uiStore.exportError"
+        class="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-start gap-2 bg-amber-600 text-white px-4 py-2 rounded-md shadow-lg text-sm max-w-md"
+        :class="{ 'top-24': solver.error.value }"
+      >
+        <span class="flex-1">{{ uiStore.exportError }}</span>
+        <button
+          type="button"
+          class="shrink-0 rounded p-1 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          :aria-label="t('common.close')"
+          @click="uiStore.setExportError(null)"
+        >
+          <X class="w-4 h-4" />
+        </button>
       </div>
 
       <div class="flex flex-1 overflow-hidden">

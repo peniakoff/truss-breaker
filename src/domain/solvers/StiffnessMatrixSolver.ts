@@ -12,6 +12,7 @@ import {
   type TrussNode,
 } from '@/domain/models'
 import { elementLength, directionCosines } from '@/domain/physics/geometry'
+import { distributeLoadsToNodes } from '@/domain/physics/loadDistribution'
 import { knToN, nToKn } from '@/domain/physics/units'
 
 type SolverErrorKey =
@@ -157,18 +158,20 @@ function buildGlobalStiffnessMatrix(
 function buildForceVector(
   nodes: TrussNode[],
   loads: TrussData['loads'],
+  elements: TrussElement[],
   nodeIndexMap: Map<string, number>,
 ): number[] {
   const forces = new Array<number>(2 * nodes.length).fill(0)
+  const contributions = distributeLoadsToNodes(loads, elements)
 
-  for (const load of loads) {
-    const index = nodeIndexMap.get(load.nodeId)
+  for (const contribution of contributions) {
+    const index = nodeIndexMap.get(contribution.nodeId)
     if (index === undefined) {
       continue
     }
 
-    forces[2 * index] += knToN(load.forceX)
-    forces[2 * index + 1] += knToN(load.forceY)
+    forces[2 * index] += knToN(contribution.forceX)
+    forces[2 * index + 1] += knToN(contribution.forceY)
   }
 
   return forces
@@ -217,7 +220,7 @@ export function solve(data: TrussData): SolverResult {
 
   try {
     const cleanStiffness = buildGlobalStiffnessMatrix(nodes, elements, nodeById, materialById, nodeIndexMap)
-    const appliedForces = buildForceVector(nodes, loads, nodeIndexMap)
+    const appliedForces = buildForceVector(nodes, loads, elements, nodeIndexMap)
     const stiffness = cleanStiffness.map((row) => [...row])
     const forces = [...appliedForces]
     const totalDofs = 2 * nodes.length

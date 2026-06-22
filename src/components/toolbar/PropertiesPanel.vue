@@ -85,10 +85,23 @@ function handleRemoveSupport(): void {
   }
 }
 
+const elementLoads = computed(() => {
+  if (!uiStore.selectedElementId) return []
+  return trussStore.getLoadsOnElement(uiStore.selectedElementId)
+})
+
 function handleRemoveLoad(): void {
   if (uiStore.selectedNodeId) {
-    trussStore.removeLoad(uiStore.selectedNodeId)
+    trussStore.removeLoadByNodeId(uiStore.selectedNodeId)
   }
+}
+
+function handleRemoveElementLoad(loadId: string): void {
+  trussStore.removeLoadById(loadId)
+}
+
+function formatLoadPosition(position: number): string {
+  return `${(position * 100).toFixed(0)}%`
 }
 
 const profileTypes: { value: ProfileType; labelKey: string }[] = [
@@ -293,6 +306,24 @@ function formatCoord(px: number): string {
             @change="handleAreaChange"
             class="h-8 text-sm"
           />
+        </div>
+
+        <div v-if="elementLoads.length > 0" class="space-y-2">
+          <Separator />
+          <Label class="text-xs">{{ t('properties.loadsOnElement') }}</Label>
+          <div
+            v-for="load in elementLoads"
+            :key="load.id"
+            class="flex items-center justify-between text-sm"
+          >
+            <div class="font-mono text-xs space-y-0.5">
+              <div>{{ formatLoadPosition(load.position ?? 0) }}</div>
+              <div>FX: {{ load.forceX }} kN, FY: {{ load.forceY }} kN</div>
+            </div>
+            <Button variant="ghost" size="sm" class="text-destructive" @click="handleRemoveElementLoad(load.id)">
+              {{ t('common.remove') }}
+            </Button>
+          </div>
         </div>
       </div>
     </template>

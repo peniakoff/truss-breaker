@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { SupportType } from '@/domain/models'
+import { SupportType, type TrussElement } from '@/domain/models'
+import { resolveLoadPosition } from '@/domain/physics/loadDistribution'
+import { elementLength, findNearestGridPointOnSegment } from '@/domain/physics/geometry'
 import { useTrussStore } from '@/stores/trussStore'
 import { useUiStore, ToolType } from '@/stores/uiStore'
 import { useMouseGridSnap } from '@/composables/useMouseGridSnap'
@@ -162,15 +164,15 @@ function forceLabel(fx: number, fy: number): string {
 
 const loadArrows = computed(() => {
   return trussStore.loads.flatMap((load) => {
-    const node = trussStore.getNodeById(load.nodeId)
-    if (!node) {
+    const position = resolveLoadPosition(load, trussStore.nodes, trussStore.elements)
+    if (!position) {
       return []
     }
 
     return [{
-      nodeId: load.nodeId,
+      id: load.id,
       label: forceLabel(load.forceX, load.forceY),
-      arrow: getForceArrow(node.x, node.y, load.forceX, load.forceY),
+      arrow: getForceArrow(position.x, position.y, load.forceX, load.forceY),
     }]
   })
 })
@@ -255,6 +257,38 @@ const showGhost = computed(() => {
 const startNode = computed(() => {
   if (!uiStore.elementStartNodeId) return null
   return trussStore.getNodeById(uiStore.elementStartNodeId) ?? null
+})
+
+const previewElementLength = computed(() => {
+  if (!startNode.value) return null
+  return elementLength(startNode.value.x, startNode.value.y, snappedX.value, snappedY.value)
+})
+
+const loadPreviewPoint = computed(() => {
+  if (uiStore.activeTool !== ToolType.ADD_LOAD || nearestNodeId.value) {
+    return null
+  }
+
+  const hit = findHoveredElementProjection(rawX.value, rawY.value)
+  if (!hit) return null
+
+  const start = trussStore.getNodeById(hit.element.startNodeId)
+  const end = trussStore.getNodeById(hit.element.endNodeId)
+  if (!start || !end) return null
+
+  const snapped = findNearestGridPointOnSegment(
+    start.x, start.y,
+    end.x, end.y,
+    rawX.value, rawY.value,
+  )
+  if (!snapped) return null
+
+  return {
+    elementId: hit.element.id,
+    x: snapped.x,
+    y: snapped.y,
+    t: snapped.t,
+  }
 })
 
 function getDeformedPosition(nodeId: string, x: number, y: number): { x: number; y: number } {
@@ -373,14 +407,33 @@ function handleToolClick(): void {
 
   if (tool === ToolType.ADD_LOAD) {
     if (nearestNodeId.value) {
-      uiStore.openLoadModal(nearestNodeId.value)
-    } else {
-      const hit = findElementAndProjection(rawX.value, rawY.value)
-      if (hit) {
-        const newNodeId = trussStore.splitElement(hit.elementId, hit.x, hit.y)
-        if (newNodeId) {
-          uiStore.openLoadModal(newNodeId)
-        }
+      uiStore.openLoadModal({ kind: 'node', nodeId: nearestNodeId.value })
+      return
+    }
+
+    const hit = findHoveredElementProjection(rawX.value, rawY.value)
+    if (hit) {
+      const start = trussStore.getNodeById(hit.element.startNodeId)
+      const end = trussStore.getNodeById(hit.element.endNodeId)
+      if (!start || !end) return
+
+      const snapped = findNearestGridPointOnSegment(
+        start.x, start.y,
+        end.x, end.y,
+        rawX.value, rawY.value,
+      )
+      if (!snapped) return
+
+      if (snapped.t <= 0) {
+        uiStore.openLoadModal({ kind: 'node', nodeId: hit.element.startNodeId })
+      } else if (snapped.t >= 1) {
+        uiStore.openLoadModal({ kind: 'node', nodeId: hit.element.endNodeId })
+      } else {
+        uiStore.openLoadModal({
+          kind: 'element',
+          elementId: hit.element.id,
+          position: snapped.t,
+        })
       }
     }
     return
@@ -399,7 +452,7 @@ function handleToolClick(): void {
   }
 }
 
-function findElementAndProjection(px: number, py: number): { elementId: string; x: number; y: number } | null {
+function findHoveredElementProjection(px: number, py: number): { element: TrussElement; x: number; y: number } | null {
   const threshold = ELEMENT_HIT_THRESHOLD / uiStore.zoom
   for (const element of trussStore.elements) {
     const start = trussStore.getNodeById(element.startNodeId)
@@ -409,10 +462,16 @@ function findElementAndProjection(px: number, py: number): { elementId: string; 
     const distance = pointToLineDistance(px, py, start.x, start.y, end.x, end.y)
     if (distance < threshold) {
       const proj = projectPointOnLine(px, py, start.x, start.y, end.x, end.y)
-      return { elementId: element.id, x: proj.x, y: proj.y }
+      return { element, x: proj.x, y: proj.y }
     }
   }
   return null
+}
+
+function findElementAndProjection(px: number, py: number): { elementId: string; x: number; y: number } | null {
+  const hit = findHoveredElementProjection(px, py)
+  if (!hit) return null
+  return { elementId: hit.element.id, x: hit.x, y: hit.y }
 }
 
 function findElementNearPoint(px: number, py: number): string | null {
@@ -596,7 +655,7 @@ function pointToLineDistance(
     </g>
 
     <g class="loads-layer">
-      <template v-for="load in loadArrows" :key="`load-${load.nodeId}`">
+      <template v-for="load in loadArrows" :key="`load-${load.id}`">
         <line
           :x1="load.arrow.x1"
           :y1="load.arrow.y1"
@@ -659,6 +718,7 @@ function pointToLineDistance(
 
     <g v-if="showGhost" class="ghost-layer">
       <circle
+        v-if="uiStore.activeTool !== ToolType.ADD_LOAD || !loadPreviewPoint"
         :cx="snappedX"
         :cy="snappedY"
         :r="NODE_RADIUS / uiStore.zoom"
@@ -666,6 +726,17 @@ function pointToLineDistance(
         fill-opacity="0.5"
         :stroke="nearestNodeId ? COLOR_NODE : COLOR_GHOST"
         :stroke-width="1 / uiStore.zoom"
+        stroke-dasharray="3"
+      />
+      <circle
+        v-if="loadPreviewPoint"
+        :cx="loadPreviewPoint.x"
+        :cy="loadPreviewPoint.y"
+        :r="NODE_RADIUS / uiStore.zoom"
+        :fill="COLOR_LOAD"
+        fill-opacity="0.5"
+        :stroke="COLOR_LOAD"
+        :stroke-width="1.5 / uiStore.zoom"
         stroke-dasharray="3"
       />
     </g>
@@ -680,5 +751,16 @@ function pointToLineDistance(
       :stroke-width="2 / uiStore.zoom"
       stroke-dasharray="5"
     />
+    <text
+      v-if="startNode && previewElementLength !== null"
+      :x="(startNode.x + snappedX) / 2"
+      :y="(startNode.y + snappedY) / 2 - 12 / uiStore.zoom"
+      :fill="COLOR_GHOST"
+      :font-size="FONT_SIZE_ELEMENT_LABEL / uiStore.zoom"
+      text-anchor="middle"
+      font-weight="bold"
+    >
+      {{ t('canvas.elementLength', { value: previewElementLength.toFixed(2) }) }}
+    </text>
   </svg>
 </template>

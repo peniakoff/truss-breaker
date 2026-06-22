@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import type { LoadTarget } from '@/domain/models'
 import { ZOOM_MAX, ZOOM_MIN } from '@/utils/constants'
 
 export const ToolType = {
@@ -30,6 +31,7 @@ export const useUiStore = defineStore('ui', () => {
   const showDeformations = ref(true)
   const exportError = ref<string | null>(null)
   const modalTargetNodeId = ref<string | null>(null)
+  const modalLoadTarget = ref<LoadTarget | null>(null)
 
   function setTool(tool: ToolType): void {
     activeTool.value = tool
@@ -73,14 +75,14 @@ export const useUiStore = defineStore('ui', () => {
     modalTargetNodeId.value = null
   }
 
-  function openLoadModal(nodeId: string): void {
-    modalTargetNodeId.value = nodeId
+  function openLoadModal(target: LoadTarget): void {
+    modalLoadTarget.value = target
     showLoadModal.value = true
   }
 
   function closeLoadModal(): void {
     showLoadModal.value = false
-    modalTargetNodeId.value = null
+    modalLoadTarget.value = null
   }
 
   function openProjectsModal(): void {
@@ -110,6 +112,7 @@ export const useUiStore = defineStore('ui', () => {
     showDeformations,
     exportError,
     modalTargetNodeId,
+    modalLoadTarget,
     // Actions
     setTool,
     selectNode,

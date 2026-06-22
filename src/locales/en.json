@@ -5,7 +5,8 @@
   "common": {
     "cancel": "Cancel",
     "remove": "Remove",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "close": "Close"
   },
   "header": {
     "save": "Save project",
@@ -55,7 +56,8 @@
     "profileIpe": "IPE",
     "profileHeb": "HEB",
     "profilePipe": "Pipe",
-    "connectedElements": "Connected elements"
+    "connectedElements": "Connected elements",
+    "loadsOnElement": "Loads on element"
   },
   "support": {
     "title": "Select support type",
@@ -136,7 +138,8 @@
     "supportRollerX": "Roller X",
     "supportRollerY": "Roller Y",
     "forceX": "FX={value} kN",
-    "forceY": "FY={value} kN"
+    "forceY": "FY={value} kN",
+    "elementLength": "{value} m"
   },
   "export": {
     "noData": "No truss data to export",

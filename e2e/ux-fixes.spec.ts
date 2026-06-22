@@ -113,7 +113,7 @@ test.describe('Bug #3: Support/load placement on beam midpoints', () => {
     await expect(supports).toHaveCount(1)
   })
 
-  test('should split element and add load when clicking on beam with load tool', async ({ page }) => {
+  test('should add load on beam midpoint without splitting element', async ({ page }) => {
     // Create an element (beam) with two nodes
     await page.keyboard.press('e')
     await clickCanvas(page, 0.2, 0.5)
@@ -134,11 +134,9 @@ test.describe('Bug #3: Support/load placement on beam midpoints', () => {
     // Add a load (default FY=-10)
     await page.getByRole('button', { name: 'Dodaj siłę' }).click()
 
-    // Should now have 3 nodes
-    await expect(page.locator('main svg .nodes-layer circle')).toHaveCount(3)
-
-    // Should now have 2 elements
-    await expect(page.locator('main svg .elements-layer line')).toHaveCount(2)
+    // Topology unchanged: still 2 nodes and 1 element
+    await expect(page.locator('main svg .nodes-layer circle')).toHaveCount(2)
+    await expect(page.locator('main svg .elements-layer line')).toHaveCount(1)
 
     // Should have 1 load arrow
     const loads = page.locator('main svg .loads-layer line')

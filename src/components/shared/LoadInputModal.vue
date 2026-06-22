@@ -23,9 +23,22 @@ const forceX = ref(0)
 const forceY = ref(-10)
 const error = ref('')
 
+function findExistingLoad() {
+  const target = uiStore.modalLoadTarget
+  if (!target) return undefined
+
+  if (target.kind === 'node') {
+    return trussStore.getLoadByNodeId(target.nodeId)
+  }
+
+  return trussStore.getLoadsOnElement(target.elementId).find(
+    (load) => load.position === target.position,
+  )
+}
+
 watch(() => uiStore.showLoadModal, (open) => {
-  if (open && uiStore.modalTargetNodeId) {
-    const existing = trussStore.getLoadByNodeId(uiStore.modalTargetNodeId)
+  if (open && uiStore.modalLoadTarget) {
+    const existing = findExistingLoad()
     if (existing) {
       forceX.value = existing.forceX
       forceY.value = existing.forceY
@@ -50,8 +63,8 @@ function handleAdd(): void {
     return
   }
 
-  if (uiStore.modalTargetNodeId) {
-    trussStore.addLoad(uiStore.modalTargetNodeId, fx, fy)
+  if (uiStore.modalLoadTarget) {
+    trussStore.addLoad(uiStore.modalLoadTarget, fx, fy)
   }
   uiStore.closeLoadModal()
 }

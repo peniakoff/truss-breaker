@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { TrussNode, TrussElement, Material, Support, Load, CalculationResult, TrussData } from '@/domain/models'
+import type { TrussNode, TrussElement, Material, Support, Load, LoadTarget, CalculationResult, TrussData } from '@/domain/models'
 import { SupportType } from '@/domain/models'
 import { DEFAULT_YOUNG_MODULUS, DEFAULT_YIELD_STRENGTH, DEFAULT_MATERIAL_NAME, DEFAULT_CROSS_SECTION_AREA } from '@/utils/constants'
 
@@ -59,6 +59,26 @@ export const useTrussStore = defineStore('truss', () => {
     }
   })
 
+  const getLoadsOnElement = computed(() => {
+    return (elementId: string): Load[] => {
+      return loads.value.filter((l) => l.elementId === elementId)
+    }
+  })
+
+  function migrateLoads(rawLoads: Load[]): Load[] {
+    return rawLoads.map((load, index) => {
+      const migrated: Load = {
+        id: load.id ?? `l-migrated-${index + 1}`,
+        forceX: load.forceX,
+        forceY: load.forceY,
+      }
+      if (load.nodeId) migrated.nodeId = load.nodeId
+      if (load.elementId) migrated.elementId = load.elementId
+      if (load.position !== undefined) migrated.position = load.position
+      return migrated
+    })
+  }
+
   const reactionCount = computed(() => {
     let count = 0
     for (const support of supports.value) {
@@ -87,14 +107,20 @@ export const useTrussStore = defineStore('truss', () => {
   }
 
   function removeNode(id: string): void {
+    const removedElementIds = elements.value
+      .filter((el) => el.startNodeId === id || el.endNodeId === id)
+      .map((el) => el.id)
+
     // Remove connected elements first
     elements.value = elements.value.filter(
       (el) => el.startNodeId !== id && el.endNodeId !== id,
     )
     // Remove support on this node
     supports.value = supports.value.filter((s) => s.nodeId !== id)
-    // Remove load on this node
-    loads.value = loads.value.filter((l) => l.nodeId !== id)
+    // Remove loads on this node and on removed elements
+    loads.value = loads.value.filter(
+      (l) => l.nodeId !== id && !(l.elementId && removedElementIds.includes(l.elementId)),
+    )
     // Remove the node
     nodes.value = nodes.value.filter((n) => n.id !== id)
     clearResults()
@@ -123,6 +149,7 @@ export const useTrussStore = defineStore('truss', () => {
   }
 
   function removeElement(id: string): void {
+    loads.value = loads.value.filter((l) => l.elementId !== id)
     elements.value = elements.value.filter((el) => el.id !== id)
     clearResults()
   }
@@ -203,22 +230,47 @@ export const useTrussStore = defineStore('truss', () => {
     clearResults()
   }
 
-  function addLoad(nodeId: string, forceX: number, forceY: number): Load {
-    // Remove existing load on this node
-    loads.value = loads.value.filter((l) => l.nodeId !== nodeId)
-    const load: Load = { nodeId, forceX, forceY }
+  function addLoad(target: LoadTarget, forceX: number, forceY: number): Load {
+    if (target.kind === 'node') {
+      loads.value = loads.value.filter((l) => l.nodeId !== target.nodeId)
+      const load: Load = {
+        id: generateId('l'),
+        nodeId: target.nodeId,
+        forceX,
+        forceY,
+      }
+      loads.value.push(load)
+      clearResults()
+      return load
+    }
+
+    loads.value = loads.value.filter(
+      (l) => !(l.elementId === target.elementId && l.position === target.position),
+    )
+    const load: Load = {
+      id: generateId('l'),
+      elementId: target.elementId,
+      position: target.position,
+      forceX,
+      forceY,
+    }
     loads.value.push(load)
     clearResults()
     return load
   }
 
-  function removeLoad(nodeId: string): void {
+  function removeLoadById(id: string): void {
+    loads.value = loads.value.filter((l) => l.id !== id)
+    clearResults()
+  }
+
+  function removeLoadByNodeId(nodeId: string): void {
     loads.value = loads.value.filter((l) => l.nodeId !== nodeId)
     clearResults()
   }
 
-  function updateLoad(nodeId: string, forceX: number, forceY: number): void {
-    const load = loads.value.find((l) => l.nodeId === nodeId)
+  function updateLoadById(id: string, forceX: number, forceY: number): void {
+    const load = loads.value.find((l) => l.id === id)
     if (load) {
       load.forceX = forceX
       load.forceY = forceY
@@ -257,12 +309,13 @@ export const useTrussStore = defineStore('truss', () => {
     elements.value = cloned.elements
     materials.value = cloned.materials
     supports.value = cloned.supports
-    loads.value = cloned.loads
+    loads.value = migrateLoads(cloned.loads)
     results.value = null
     // Update nextId to avoid collisions
     const allIds = [
       ...data.nodes.map((n) => n.id),
       ...data.elements.map((e) => e.id),
+      ...loads.value.map((l) => l.id),
     ]
     let maxNum = 0
     for (const id of allIds) {
@@ -298,6 +351,7 @@ export const useTrussStore = defineStore('truss', () => {
     getElementsByNodeId,
     getSupportByNodeId,
     getLoadByNodeId,
+    getLoadsOnElement,
     reactionCount,
     isStaticallyDeterminate,
     // Actions
@@ -311,8 +365,9 @@ export const useTrussStore = defineStore('truss', () => {
     addSupport,
     removeSupport,
     addLoad,
-    removeLoad,
-    updateLoad,
+    removeLoadById,
+    removeLoadByNodeId,
+    updateLoadById,
     setResults,
     clearResults,
     clearAll,

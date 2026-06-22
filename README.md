@@ -13,6 +13,8 @@
 ## Features
 
 - Interactive SVG canvas for drawing nodes, elements, supports, and loads
+- Point loads on nodes or anywhere along a member (grid-snapped, no topology split)
+- Live member length preview while drawing elements
 - Client-side stiffness-matrix solver (no server required)
 - Real-time visualization of axial forces (tension/compression coloring)
 - Support reactions and displacement results

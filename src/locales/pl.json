@@ -5,7 +5,8 @@
   "common": {
     "cancel": "Anuluj",
     "remove": "Usuń",
-    "dismiss": "Zamknij"
+    "dismiss": "Zamknij",
+    "close": "Zamknij"
   },
   "header": {
     "save": "Zapisz projekt",
@@ -55,7 +56,8 @@
     "profileIpe": "IPE",
     "profileHeb": "HEB",
     "profilePipe": "Rura",
-    "connectedElements": "Prętów"
+    "connectedElements": "Prętów",
+    "loadsOnElement": "Obciążenia na pręcie"
   },
   "support": {
     "title": "Wybierz typ podpory",
@@ -136,7 +138,8 @@
     "supportRollerX": "Przesuwna X",
     "supportRollerY": "Przesuwna Y",
     "forceX": "FX={value} kN",
-    "forceY": "FY={value} kN"
+    "forceY": "FY={value} kN",
+    "elementLength": "{value} m"
   },
   "export": {
     "noData": "Brak danych kratownicy do eksportu",

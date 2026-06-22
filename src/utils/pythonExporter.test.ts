@@ -30,7 +30,7 @@ function makeSimpleTruss(): TrussData {
       { nodeId: 'n1', type: SupportType.FIXED },
       { nodeId: 'n2', type: SupportType.ROLLER_Y },
     ],
-    loads: [{ nodeId: 'n1', forceX: 0, forceY: -10 }],
+    loads: [{ id: 'l1', nodeId: 'n1', forceX: 0, forceY: -10 }],
   }
 }
 
@@ -66,5 +66,14 @@ describe('generatePythonScript', () => {
   it('documents Y-up coordinate conversion', () => {
     const script = generatePythonScript(makeSimpleTruss())
     expect(script).toContain('y_ana = -y_canvas')
+  })
+
+  it('distributes element loads to end nodes in exported script', () => {
+    const data = makeSimpleTruss()
+    data.loads = [{ id: 'l1', elementId: 'e1', position: 0.5, forceX: 0, forceY: -20 }]
+    const script = generatePythonScript(data)
+
+    expect(script).toContain('ss.point_load(find_node_id(0.0000, 0.0000), Fx=0.0, Fy=10000.0)')
+    expect(script).toContain('ss.point_load(find_node_id(4.0000, 0.0000), Fx=0.0, Fy=10000.0)')
   })
 })

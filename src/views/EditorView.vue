@@ -23,9 +23,13 @@ import {
   FolderOpen,
   Trash2,
   Calculator,
+  Download,
+  FileText,
 } from 'lucide-vue-next'
+import { generatePythonScript, downloadPythonScript } from '@/utils/pythonExporter'
+import { generatePdfReport } from '@/utils/pdfReportGenerator'
 
-const { t } = useI18n()
+const { t, currentLocale, toggleLocale } = useI18n()
 const trussStore = useTrussStore()
 const uiStore = useUiStore()
 const projectsStore = useProjectsStore()
@@ -77,6 +81,39 @@ function handleSave(): void {
 
 function handleClear(): void {
   trussStore.clearAll()
+}
+
+function handleExportPython(): void {
+  const data = trussStore.exportTrussData()
+  if (data.nodes.length === 0) {
+    uiStore.setExportError(t('export.noData'))
+    return
+  }
+  uiStore.setExportError(null)
+  const name = projectsStore.currentProject?.name ?? 'truss'
+  const script = generatePythonScript(data, name)
+  const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '_') || 'truss'
+  downloadPythonScript(script, `${safeName}.py`)
+}
+
+async function handleExportPdf(): Promise<void> {
+  if (!trussStore.results) {
+    uiStore.setExportError(t('export.pdfNoResults'))
+    return
+  }
+  const svg = document.querySelector('main svg')
+  if (!svg) return
+
+  uiStore.setExportError(null)
+  const name = projectsStore.currentProject?.name ?? 'truss'
+  const result = await generatePdfReport({
+    projectName: name,
+    results: trussStore.results,
+    svgElement: svg as SVGSVGElement,
+  })
+  if (!result.diagramRendered) {
+    uiStore.setExportError(t('export.pdfRenderFailed'))
+  }
 }
 
 function handleKeyDown(e: KeyboardEvent): void {
@@ -151,7 +188,18 @@ onUnmounted(() => {
             <Trash2 class="w-4 h-4 mr-1" />
             {{ t('header.clearCanvas') }}
           </Button>
+          <Button variant="ghost" size="sm" @click="handleExportPython">
+            <Download class="w-4 h-4 mr-1" />
+            {{ t('header.export') }}
+          </Button>
+          <Button variant="ghost" size="sm" :disabled="!trussStore.results" @click="handleExportPdf">
+            <FileText class="w-4 h-4 mr-1" />
+            {{ t('header.exportPdf') }}
+          </Button>
           <Separator orientation="vertical" class="h-6" />
+          <Button variant="ghost" size="sm" @click="toggleLocale">
+            {{ currentLocale === 'en' ? 'PL' : 'EN' }}
+          </Button>
           <Button variant="default" size="sm" class="bg-green-600 hover:bg-green-700 text-white" :disabled="solver.isCalculating.value" @click="handleCalculate">
             <Calculator class="w-4 h-4 mr-1" />
             {{ t('header.calculate') }}
@@ -163,6 +211,10 @@ onUnmounted(() => {
       <div v-if="solver.error.value" class="absolute top-14 left-1/2 -translate-x-1/2 z-50 bg-destructive text-destructive-foreground px-4 py-2 rounded-md shadow-lg text-sm max-w-md">
         {{ solver.error.value }}
         <button class="ml-2 underline" @click="solver.error.value = null">×</button>
+      </div>
+      <div v-if="uiStore.exportError" class="absolute top-14 left-1/2 -translate-x-1/2 z-50 bg-amber-600 text-white px-4 py-2 rounded-md shadow-lg text-sm max-w-md" :class="{ 'top-24': solver.error.value }">
+        {{ uiStore.exportError }}
+        <button class="ml-2 underline" @click="uiStore.setExportError(null)">{{ t('common.dismiss') }}</button>
       </div>
 
       <div class="flex flex-1 overflow-hidden">

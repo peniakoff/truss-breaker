@@ -92,7 +92,7 @@ function handleClose(): void {
       </div>
 
       <DialogFooter>
-        <Button variant="outline" @click="handleClose">Anuluj</Button>
+        <Button variant="outline" @click="handleClose">{{ t('common.cancel') }}</Button>
         <Button @click="handleAdd">{{ t('load.add') }}</Button>
       </DialogFooter>
     </DialogContent>

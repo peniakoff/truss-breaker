@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { setupPolishLocale } from './helpers'
 
 /**
  * Helper: click at a specific position on the SVG canvas.
@@ -43,7 +44,7 @@ test.describe('Application bootstrap', () => {
   })
 
   test('should display properties panel on the right', async ({ page }) => {
-    await page.goto('/')
+    await setupPolishLocale(page)
     const rightPanel = page.locator('aside').nth(1)
     await expect(rightPanel).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Właściwości' })).toBeVisible()
@@ -211,7 +212,7 @@ test.describe('Canvas navigation', () => {
 
 test.describe('Header actions', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await setupPolishLocale(page)
   })
 
   test('should open projects modal', async ({ page }) => {
@@ -238,7 +239,7 @@ test.describe('Header actions', () => {
 
 test.describe('Calculate button', () => {
   test('should show an error when calculating with insufficient data', async ({ page }) => {
-    await page.goto('/')
+    await setupPolishLocale(page)
     await page.getByRole('button', { name: 'Oblicz' }).click()
     await expect(page.locator('.bg-destructive')).toBeVisible({ timeout: 5000 })
   })

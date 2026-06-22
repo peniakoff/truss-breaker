@@ -5,6 +5,7 @@ import { useTrussStore } from '@/stores/trussStore'
 import { useUiStore, ToolType } from '@/stores/uiStore'
 import { useMouseGridSnap } from '@/composables/useMouseGridSnap'
 import { useCanvasNavigation } from '@/composables/useCanvasNavigation'
+import { useI18n } from '@/composables/useI18n'
 import {
   GRID_SIZE,
   GRID_MINOR_SIZE,
@@ -28,6 +29,7 @@ import {
   COLOR_NEUTRAL,
   NODE_RADIUS,
   ELEMENT_WIDTH,
+  ELEMENT_HIT_THRESHOLD,
   SUPPORT_SIZE,
   FORCE_ARROW_MIN_LENGTH,
   FORCE_ARROW_HEAD_SIZE,
@@ -36,10 +38,12 @@ import {
   FONT_SIZE_ELEMENT_LABEL,
   FONT_SIZE_FORCE_LABEL,
   FONT_SIZE_SUPPORT_LABEL,
+  DEFORMATION_SCALE_FACTOR,
 } from '@/utils/constants'
 
 const trussStore = useTrussStore()
 const uiStore = useUiStore()
+const { t } = useI18n()
 const svgRef = ref<SVGSVGElement | null>(null)
 
 const { snappedX, snappedY, rawX, rawY, nearestNodeId, handleMouseMove: snapMouseMove } = useMouseGridSnap()
@@ -109,7 +113,7 @@ const elementForceLabels = computed(() => {
     return [{
       elementId: result.elementId,
       x: (startNode.x + endNode.x) / 2,
-      y: (startNode.y + endNode.y) / 2 - 14 / uiStore.zoom,
+      y: (startNode.y + endNode.y) / 2 - 40 / uiStore.zoom,
       axialForce: result.axialForce,
       color: result.axialForce > 0.001
         ? COLOR_TENSION
@@ -151,8 +155,8 @@ function getForceArrow(nodeX: number, nodeY: number, fx: number, fy: number): {
 
 function forceLabel(fx: number, fy: number): string {
   const parts: string[] = []
-  if (Math.abs(fx) > 0.001) parts.push(`FX=${fx.toFixed(1)} kN`)
-  if (Math.abs(fy) > 0.001) parts.push(`FY=${fy.toFixed(1)} kN`)
+  if (Math.abs(fx) > 0.001) parts.push(t('canvas.forceX', { value: fx.toFixed(1) }))
+  if (Math.abs(fy) > 0.001) parts.push(t('canvas.forceY', { value: fy.toFixed(1) }))
   return parts.join(', ')
 }
 
@@ -228,15 +232,15 @@ function getRollerCircles(x: number, y: number, type: string): { cx: number; cy:
 }
 
 function getSupportLabel(type: string): string {
-  if (type === SupportType.FIXED) return 'Stała'
-  if (type === SupportType.ROLLER_X) return 'Przesuwna X'
-  if (type === SupportType.ROLLER_Y) return 'Przesuwna Y'
+  if (type === SupportType.FIXED) return t('canvas.supportFixed')
+  if (type === SupportType.ROLLER_X) return t('canvas.supportRollerX')
+  if (type === SupportType.ROLLER_Y) return t('canvas.supportRollerY')
   return ''
 }
 
 function getSupportLabelY(y: number, type: string): number {
-  if (type === SupportType.FIXED) return y + SUPPORT_SIZE + 16
-  return y + SUPPORT_SIZE * 0.7 + 16
+  if (type === SupportType.FIXED) return y + SUPPORT_SIZE + 40
+  return y + SUPPORT_SIZE * 0.7 + 40
 }
 
 function getNodeColor(nodeId: string): string {
@@ -251,6 +255,47 @@ const showGhost = computed(() => {
 const startNode = computed(() => {
   if (!uiStore.elementStartNodeId) return null
   return trussStore.getNodeById(uiStore.elementStartNodeId) ?? null
+})
+
+function getDeformedPosition(nodeId: string, x: number, y: number): { x: number; y: number } {
+  if (!trussStore.results || !uiStore.showDeformations) {
+    return { x, y }
+  }
+  const displacement = trussStore.results.displacements.find((d) => d.nodeId === nodeId)
+  if (!displacement) {
+    return { x, y }
+  }
+  const scale = GRID_SIZE * DEFORMATION_SCALE_FACTOR
+  return {
+    x: x + displacement.dx * scale,
+    y: y + displacement.dy * scale,
+  }
+}
+
+const deformedElements = computed(() => {
+  if (!trussStore.results || !uiStore.showDeformations) return []
+  return trussStore.elements.flatMap((element) => {
+    const start = trussStore.getNodeById(element.startNodeId)
+    const end = trussStore.getNodeById(element.endNodeId)
+    if (!start || !end) return []
+    const startPos = getDeformedPosition(start.id, start.x, start.y)
+    const endPos = getDeformedPosition(end.id, end.x, end.y)
+    return [{
+      id: element.id,
+      x1: startPos.x,
+      y1: startPos.y,
+      x2: endPos.x,
+      y2: endPos.y,
+    }]
+  })
+})
+
+const deformedNodes = computed(() => {
+  if (!trussStore.results || !uiStore.showDeformations) return []
+  return trussStore.nodes.map((node) => {
+    const pos = getDeformedPosition(node.id, node.x, node.y)
+    return { id: node.id, x: pos.x, y: pos.y }
+  })
 })
 
 function onMouseMove(e: MouseEvent): void {
@@ -355,7 +400,7 @@ function handleToolClick(): void {
 }
 
 function findElementAndProjection(px: number, py: number): { elementId: string; x: number; y: number } | null {
-  const threshold = 10 / uiStore.zoom
+  const threshold = ELEMENT_HIT_THRESHOLD / uiStore.zoom
   for (const element of trussStore.elements) {
     const start = trussStore.getNodeById(element.startNodeId)
     const end = trussStore.getNodeById(element.endNodeId)
@@ -371,7 +416,7 @@ function findElementAndProjection(px: number, py: number): { elementId: string; 
 }
 
 function findElementNearPoint(px: number, py: number): string | null {
-  const threshold = 10 / uiStore.zoom
+  const threshold = ELEMENT_HIT_THRESHOLD / uiStore.zoom
   for (const element of trussStore.elements) {
     const start = trussStore.getNodeById(element.startNodeId)
     const end = trussStore.getNodeById(element.endNodeId)
@@ -448,6 +493,33 @@ function pointToLineDistance(
         :y2="line.y2"
         :stroke="GRID_MAJOR_COLOR"
         :stroke-width="GRID_MAJOR_LINE_WIDTH / uiStore.zoom"
+      />
+    </g>
+
+    <g v-if="deformedElements.length > 0" class="deformations-layer">
+      <line
+        v-for="element in deformedElements"
+        :key="`def-${element.id}`"
+        :x1="element.x1"
+        :y1="element.y1"
+        :x2="element.x2"
+        :y2="element.y2"
+        :stroke="COLOR_GHOST"
+        :stroke-width="ELEMENT_WIDTH / uiStore.zoom"
+        stroke-linecap="round"
+        stroke-dasharray="8"
+        opacity="0.7"
+      />
+      <circle
+        v-for="node in deformedNodes"
+        :key="`def-node-${node.id}`"
+        :cx="node.x"
+        :cy="node.y"
+        :r="NODE_RADIUS / uiStore.zoom"
+        :fill="COLOR_GHOST"
+        fill-opacity="0.4"
+        :stroke="COLOR_GHOST"
+        :stroke-width="1 / uiStore.zoom"
       />
     </g>
 
@@ -536,7 +608,7 @@ function pointToLineDistance(
         <polygon :points="load.arrow.headPoints" :fill="COLOR_LOAD" />
         <text
           :x="load.arrow.x1"
-          :y="load.arrow.y1 - 5 / uiStore.zoom"
+          :y="load.arrow.y1 - 20 / uiStore.zoom"
           :fill="COLOR_LOAD"
           :font-size="FONT_SIZE_FORCE_LABEL / uiStore.zoom"
           text-anchor="middle"
@@ -560,7 +632,7 @@ function pointToLineDistance(
         <polygon :points="reaction.arrow.headPoints" :fill="COLOR_REACTION" />
         <text
           :x="reaction.arrow.x1"
-          :y="reaction.arrow.y1 - 5 / uiStore.zoom"
+          :y="reaction.arrow.y1 - 20 / uiStore.zoom"
           :fill="COLOR_REACTION"
           :font-size="FONT_SIZE_FORCE_LABEL / uiStore.zoom"
           text-anchor="middle"

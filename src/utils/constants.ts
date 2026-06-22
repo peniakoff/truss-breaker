@@ -1,7 +1,6 @@
 // Grid configuration
 export const GRID_SIZE = 50 // pixels per grid unit (1 meter)
 export const GRID_MINOR_SIZE = GRID_SIZE / 10 // pixels per minor grid unit (0.1 m = 10 cm)
-export const GRID_SNAP_THRESHOLD = 15 // pixels
 export const CANVAS_WIDTH = 4000 // total canvas width in px
 export const CANVAS_HEIGHT = 3000 // total canvas height in px
 export const GRID_COLOR = '#e5e7eb'
@@ -35,18 +34,20 @@ export const COLOR_GHOST = '#94a3b8' // slate-400
 
 // Visualization scales
 export const DEFORMATION_SCALE_FACTOR = 100
-export const FORCE_ARROW_SCALE = 0.5 // pixels per kN
-export const FORCE_ARROW_MIN_LENGTH = 30 // minimum arrow length in px
-export const FORCE_ARROW_HEAD_SIZE = 10
+export const FORCE_ARROW_SCALE = 1.0 // pixels per kN
+export const FORCE_ARROW_MIN_LENGTH = 80 // minimum arrow length in px
+export const FORCE_ARROW_HEAD_SIZE = 24
 
 // Node rendering
-export const NODE_RADIUS = 6
-export const NODE_HOVER_RADIUS = 10
-export const ELEMENT_WIDTH = 3
-export const ELEMENT_HOVER_WIDTH = 6
+export const NODE_RADIUS = 24
+export const NODE_HOVER_RADIUS = 40
+export const GRID_SNAP_THRESHOLD = NODE_HOVER_RADIUS
+export const ELEMENT_WIDTH = 8
+export const ELEMENT_HOVER_WIDTH = 16
+export const ELEMENT_HIT_THRESHOLD = ELEMENT_HOVER_WIDTH
 
 // Support rendering
-export const SUPPORT_SIZE = 20
+export const SUPPORT_SIZE = 60
 
 // Zoom
 export const ZOOM_MIN = 0.2
@@ -54,6 +55,6 @@ export const ZOOM_MAX = 5
 export const ZOOM_STEP = 0.1
 
 // Font sizes for technical drawing labels
-export const FONT_SIZE_ELEMENT_LABEL = 16
-export const FONT_SIZE_FORCE_LABEL = 14
-export const FONT_SIZE_SUPPORT_LABEL = 12
+export const FONT_SIZE_ELEMENT_LABEL = 56
+export const FONT_SIZE_FORCE_LABEL = 56
+export const FONT_SIZE_SUPPORT_LABEL = 48

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useTrussStore } from '@/stores/trussStore'
+import { useUiStore } from '@/stores/uiStore'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -18,6 +19,7 @@ import { X } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const trussStore = useTrussStore()
+const uiStore = useUiStore()
 
 const results = computed(() => trussStore.results)
 
@@ -101,6 +103,16 @@ function handleClear(): void {
     <Badge :variant="trussStore.isStaticallyDeterminate ? 'secondary' : 'outline'">
       {{ trussStore.isStaticallyDeterminate ? t('results.staticallyDeterminate') : t('results.staticallyIndeterminate') }}
     </Badge>
+
+    <label class="flex items-center gap-2 text-xs cursor-pointer">
+      <input
+        type="checkbox"
+        :checked="uiStore.showDeformations"
+        @change="uiStore.showDeformations = ($event.target as HTMLInputElement).checked"
+        class="rounded"
+      />
+      {{ t('results.showDeformations') }}
+    </label>
 
     <Separator />
 

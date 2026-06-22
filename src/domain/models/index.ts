@@ -1,5 +1,6 @@
 export type { TrussNode } from './Node'
 export type { Material } from './Material'
+export type { ProfileType } from './ProfileType'
 export type { CrossSection } from './CrossSection'
 export type { TrussElement } from './Element'
 export { SupportType } from './Support'

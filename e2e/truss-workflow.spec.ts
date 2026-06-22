@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { setupPolishLocale } from './helpers'
 
 /**
  * Helper: click at a specific position on the SVG canvas.
@@ -56,10 +57,7 @@ async function buildSimpleTruss(page: Page) {
 
 test.describe('Full truss workflow', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.evaluate(() => localStorage.clear())
-    await page.reload()
-    await page.waitForLoadState('networkidle')
+    await setupPolishLocale(page, true)
   })
 
   test('should build a simple truss and calculate results', async ({ page }) => {
@@ -114,10 +112,7 @@ test.describe('Full truss workflow', () => {
 
 test.describe('Support modal', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.evaluate(() => localStorage.clear())
-    await page.reload()
-    await page.waitForLoadState('networkidle')
+    await setupPolishLocale(page, true)
   })
 
   test('should add a fixed support to a node', async ({ page }) => {
@@ -154,10 +149,7 @@ test.describe('Support modal', () => {
 
 test.describe('Load modal', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.evaluate(() => localStorage.clear())
-    await page.reload()
-    await page.waitForLoadState('networkidle')
+    await setupPolishLocale(page, true)
   })
 
   test('should add a load to a node', async ({ page }) => {
@@ -202,10 +194,7 @@ test.describe('Load modal', () => {
 
 test.describe('Project management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.evaluate(() => localStorage.clear())
-    await page.reload()
-    await page.waitForLoadState('networkidle')
+    await setupPolishLocale(page, true)
   })
 
   test('should open and close projects modal', async ({ page }) => {

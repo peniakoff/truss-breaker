@@ -65,7 +65,7 @@ function handleClose(): void {
       </RadioGroup>
 
       <DialogFooter>
-        <Button variant="outline" @click="handleClose">Anuluj</Button>
+        <Button variant="outline" @click="handleClose">{{ t('common.cancel') }}</Button>
         <Button @click="handleAdd">{{ t('support.add') }}</Button>
       </DialogFooter>
     </DialogContent>

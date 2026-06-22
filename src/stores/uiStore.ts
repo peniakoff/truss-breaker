@@ -27,6 +27,8 @@ export const useUiStore = defineStore('ui', () => {
   const showSupportModal = ref(false)
   const showLoadModal = ref(false)
   const showProjectsModal = ref(false)
+  const showDeformations = ref(true)
+  const exportError = ref<string | null>(null)
   const modalTargetNodeId = ref<string | null>(null)
 
   function setTool(tool: ToolType): void {
@@ -89,6 +91,10 @@ export const useUiStore = defineStore('ui', () => {
     showProjectsModal.value = false
   }
 
+  function setExportError(message: string | null): void {
+    exportError.value = message
+  }
+
   return {
     // State
     activeTool,
@@ -101,6 +107,8 @@ export const useUiStore = defineStore('ui', () => {
     showSupportModal,
     showLoadModal,
     showProjectsModal,
+    showDeformations,
+    exportError,
     modalTargetNodeId,
     // Actions
     setTool,
@@ -116,5 +124,6 @@ export const useUiStore = defineStore('ui', () => {
     closeLoadModal,
     openProjectsModal,
     closeProjectsModal,
+    setExportError,
   }
 })

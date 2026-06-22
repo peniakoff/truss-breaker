@@ -10,6 +10,8 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Trash2 } from 'lucide-vue-next'
 import { GRID_SIZE } from '@/utils/constants'
+import { STEEL_PROFILES, type ProfileType } from '@/data/steelProfiles'
+import type { CrossSection } from '@/domain/models'
 
 const { t } = useI18n()
 const trussStore = useTrussStore()
@@ -89,11 +91,70 @@ function handleRemoveLoad(): void {
   }
 }
 
+const profileTypes: { value: ProfileType; labelKey: string }[] = [
+  { value: 'custom', labelKey: 'properties.profileCustom' },
+  { value: 'ipe', labelKey: 'properties.profileIpe' },
+  { value: 'heb', labelKey: 'properties.profileHeb' },
+  { value: 'pipe', labelKey: 'properties.profilePipe' },
+]
+
+const selectedProfileType = computed((): ProfileType => {
+  return selectedElement.value?.crossSection.profileType ?? 'custom'
+})
+
+const availableProfiles = computed(() => {
+  const type = selectedProfileType.value
+  if (type === 'custom') return []
+  return STEEL_PROFILES[type]
+})
+
+function updateCrossSection(updates: Partial<CrossSection>): void {
+  if (!selectedElement.value) return
+  trussStore.updateElement(selectedElement.value.id, {
+    crossSection: {
+      ...selectedElement.value.crossSection,
+      ...updates,
+    },
+  })
+}
+
+function handleProfileTypeChange(e: Event): void {
+  const type = (e.target as HTMLSelectElement).value as ProfileType
+  if (type === 'custom') {
+    updateCrossSection({ profileType: 'custom', profileName: undefined })
+    return
+  }
+  const first = STEEL_PROFILES[type][0]
+  if (first) {
+    updateCrossSection({
+      profileType: type,
+      profileName: first.name,
+      area: first.area,
+    })
+  }
+}
+
+function handleProfileNameChange(e: Event): void {
+  const name = (e.target as HTMLSelectElement).value
+  const type = selectedProfileType.value
+  if (type === 'custom') return
+  const profile = STEEL_PROFILES[type].find((p) => p.name === name)
+  if (profile) {
+    updateCrossSection({
+      profileType: type,
+      profileName: profile.name,
+      area: profile.area,
+    })
+  }
+}
+
 function handleAreaChange(e: Event): void {
   const val = parseFloat((e.target as HTMLInputElement).value)
   if (!isNaN(val) && val > 0 && selectedElement.value) {
-    trussStore.updateElement(selectedElement.value.id, {
-      crossSection: { area: val },
+    updateCrossSection({
+      area: val,
+      profileType: 'custom',
+      profileName: undefined,
     })
   }
 }
@@ -129,7 +190,7 @@ function formatCoord(px: number): string {
         </div>
 
         <div class="text-sm text-muted-foreground">
-          Prętów: {{ connectedElements.length }}
+          {{ t('properties.connectedElements') }}: {{ connectedElements.length }}
         </div>
 
         <!-- Support info -->
@@ -138,7 +199,7 @@ function formatCoord(px: number): string {
           <div class="flex items-center justify-between">
             <Badge variant="outline">{{ t('properties.support') }}: {{ nodeSupport.type }}</Badge>
             <Button variant="ghost" size="sm" class="text-destructive" @click="handleRemoveSupport">
-              Usuń
+              {{ t('common.remove') }}
             </Button>
           </div>
         </div>
@@ -149,7 +210,7 @@ function formatCoord(px: number): string {
           <div class="flex items-center justify-between">
             <Badge variant="outline">{{ t('properties.load') }}</Badge>
             <Button variant="ghost" size="sm" class="text-destructive" @click="handleRemoveLoad">
-              Usuń
+              {{ t('common.remove') }}
             </Button>
           </div>
           <div class="grid grid-cols-2 gap-2 text-sm font-mono">
@@ -198,12 +259,37 @@ function formatCoord(px: number): string {
 
         <!-- Cross section -->
         <div class="space-y-2">
+          <Label class="text-xs">{{ t('properties.profileType') }}</Label>
+          <select
+            class="w-full h-8 text-sm rounded-md border border-input bg-background px-2"
+            :value="selectedProfileType"
+            @change="handleProfileTypeChange"
+          >
+            <option v-for="pt in profileTypes" :key="pt.value" :value="pt.value">
+              {{ t(pt.labelKey) }}
+            </option>
+          </select>
+
+          <template v-if="selectedProfileType !== 'custom'">
+            <Label class="text-xs">{{ t('properties.selectProfile') }}</Label>
+            <select
+              class="w-full h-8 text-sm rounded-md border border-input bg-background px-2"
+              :value="selectedElement.crossSection.profileName ?? ''"
+              @change="handleProfileNameChange"
+            >
+              <option v-for="profile in availableProfiles" :key="profile.name" :value="profile.name">
+                {{ profile.name }}
+              </option>
+            </select>
+          </template>
+
           <Label for="area" class="text-xs">{{ t('properties.area') }} (m²)</Label>
           <Input
             id="area"
             type="number"
             step="0.0001"
             :model-value="selectedElement.crossSection.area"
+            :disabled="selectedProfileType !== 'custom'"
             @change="handleAreaChange"
             class="h-8 text-sm"
           />

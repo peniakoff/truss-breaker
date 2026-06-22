@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { setupPolishLocale } from './helpers'
 
 /**
  * Helper: click at a specific position on the SVG canvas.
@@ -47,10 +48,7 @@ async function zoomCanvas(page: Page, deltaY: number) {
 
 test.describe('Bug #2: Grid scale — major lines 1m, minor lines 10cm', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.evaluate(() => localStorage.clear())
-    await page.reload()
-    await page.waitForLoadState('networkidle')
+    await setupPolishLocale(page, true)
   })
 
   test('should render only major grid lines at default zoom (zoom=1)', async ({ page }) => {
@@ -80,10 +78,7 @@ test.describe('Bug #2: Grid scale — major lines 1m, minor lines 10cm', () => {
 
 test.describe('Bug #3: Support/load placement on beam midpoints', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.evaluate(() => localStorage.clear())
-    await page.reload()
-    await page.waitForLoadState('networkidle')
+    await setupPolishLocale(page, true)
   })
 
   test('should split element and add support when clicking on beam with support tool', async ({ page }) => {
@@ -153,10 +148,7 @@ test.describe('Bug #3: Support/load placement on beam midpoints', () => {
 
 test.describe('Bug #4: Font sizes and labels', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.evaluate(() => localStorage.clear())
-    await page.reload()
-    await page.waitForLoadState('networkidle')
+    await setupPolishLocale(page, true)
   })
 
   test('should display support type label next to support symbol', async ({ page }) => {
@@ -244,5 +236,22 @@ test.describe('Bug #4: Font sizes and labels', () => {
     const reactionLabels = page.locator('main svg .reactions-layer .reaction-label')
     const reactionCount = await reactionLabels.count()
     expect(reactionCount).toBeGreaterThan(0)
+  })
+})
+
+test.describe('Locale toggle', () => {
+  test('should switch between English and Polish', async ({ page }) => {
+    await page.goto('/')
+    await page.evaluate(() => localStorage.clear())
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'PL' }).click()
+    await expect(page.getByRole('button', { name: 'Oblicz' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'EN' }).click()
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible()
   })
 })

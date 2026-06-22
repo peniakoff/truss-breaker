@@ -2,6 +2,11 @@
   "app": {
     "name": "Truss Breaker"
   },
+  "common": {
+    "cancel": "Anuluj",
+    "remove": "Usuń",
+    "dismiss": "Zamknij"
+  },
   "header": {
     "save": "Zapisz projekt",
     "projects": "Projekty",
@@ -10,7 +15,9 @@
     "newProject": "Nowy projekt",
     "saved": "Zapisano",
     "unsaved": "Niezapisane zmiany",
-    "saving": "Zapisywanie..."
+    "saving": "Zapisywanie...",
+    "export": "Eksportuj Python",
+    "exportPdf": "Eksportuj PDF"
   },
   "tools": {
     "select": "Wybierz / Przesuń",
@@ -41,7 +48,14 @@
     "yieldStrength": "Granica plastyczności",
     "position": "Pozycja",
     "length": "Długość",
-    "angle": "Kąt"
+    "angle": "Kąt",
+    "profileType": "Typ profilu",
+    "selectProfile": "Wybierz profil",
+    "profileCustom": "Własny",
+    "profileIpe": "IPE",
+    "profileHeb": "HEB",
+    "profilePipe": "Rura",
+    "connectedElements": "Prętów"
   },
   "support": {
     "title": "Wybierz typ podpory",
@@ -82,7 +96,8 @@
     "sumForces": "Suma sił",
     "sumReactions": "Suma reakcji",
     "staticallyDeterminate": "Układ statycznie wyznaczalny",
-    "staticallyIndeterminate": "Układ statycznie niewyznaczalny"
+    "staticallyIndeterminate": "Układ statycznie niewyznaczalny",
+    "showDeformations": "Pokaż odkształcenia"
   },
   "projects": {
     "title": "Zarządzanie projektami",
@@ -115,5 +130,17 @@
     "mm": "mm",
     "m": "m",
     "m2": "m²"
+  },
+  "canvas": {
+    "supportFixed": "Stała",
+    "supportRollerX": "Przesuwna X",
+    "supportRollerY": "Przesuwna Y",
+    "forceX": "FX={value} kN",
+    "forceY": "FY={value} kN"
+  },
+  "export": {
+    "noData": "Brak danych kratownicy do eksportu",
+    "pdfNoResults": "Uruchom obliczenia przed eksportem PDF",
+    "pdfRenderFailed": "PDF zapisany, ale nie udało się wyrenderować schematu"
   }
 }

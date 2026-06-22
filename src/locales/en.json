@@ -1,0 +1,146 @@
+{
+  "app": {
+    "name": "Truss Breaker"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "dismiss": "Dismiss"
+  },
+  "header": {
+    "save": "Save project",
+    "projects": "Projects",
+    "clearCanvas": "Clear canvas",
+    "calculate": "Calculate",
+    "newProject": "New project",
+    "saved": "Saved",
+    "unsaved": "Unsaved changes",
+    "saving": "Saving...",
+    "export": "Export Python",
+    "exportPdf": "Export PDF"
+  },
+  "tools": {
+    "select": "Select / Move",
+    "addNode": "Add node",
+    "addElement": "Add element",
+    "addSupport": "Add support",
+    "addLoad": "Add force"
+  },
+  "toolShortcuts": {
+    "select": "V",
+    "addNode": "N",
+    "addElement": "E",
+    "addSupport": "S",
+    "addLoad": "F"
+  },
+  "properties": {
+    "title": "Properties",
+    "noSelection": "No selection",
+    "selectElement": "Select an element to view properties",
+    "node": "Node",
+    "element": "Element",
+    "support": "Support",
+    "load": "Load",
+    "material": "Material",
+    "crossSection": "Cross-section",
+    "area": "Cross-section area",
+    "youngModulus": "Young's modulus",
+    "yieldStrength": "Yield strength",
+    "position": "Position",
+    "length": "Length",
+    "angle": "Angle",
+    "profileType": "Profile type",
+    "selectProfile": "Select profile",
+    "profileCustom": "Custom",
+    "profileIpe": "IPE",
+    "profileHeb": "HEB",
+    "profilePipe": "Pipe",
+    "connectedElements": "Connected elements"
+  },
+  "support": {
+    "title": "Select support type",
+    "fixed": "Fixed support (pinned)",
+    "rollerX": "Roller support (X axis)",
+    "rollerY": "Roller support (Y axis)",
+    "add": "Add support"
+  },
+  "load": {
+    "title": "Define concentrated force",
+    "forceX": "Force FX [kN]",
+    "forceY": "Force FY [kN]",
+    "add": "Add force",
+    "invalidNumber": "Enter valid numeric values",
+    "validation": "At least one value must be non-zero"
+  },
+  "results": {
+    "title": "Calculation results",
+    "axialForces": "Axial forces",
+    "reactions": "Support reactions",
+    "displacements": "Displacements",
+    "stresses": "Stresses",
+    "element": "Element",
+    "force": "Force [kN]",
+    "stress": "Stress [MPa]",
+    "status": "Status",
+    "tension": "Tension",
+    "compression": "Compression",
+    "zero": "Zero",
+    "node": "Node",
+    "rx": "RX [kN]",
+    "ry": "RY [kN]",
+    "dx": "dx [mm]",
+    "dy": "dy [mm]",
+    "clearResults": "Clear results",
+    "yieldExceeded": "Yield strength exceeded!",
+    "equilibriumCheck": "Equilibrium check",
+    "sumForces": "Sum of forces",
+    "sumReactions": "Sum of reactions",
+    "staticallyDeterminate": "Statically determinate system",
+    "staticallyIndeterminate": "Statically indeterminate system",
+    "showDeformations": "Show deformations"
+  },
+  "projects": {
+    "title": "Project management",
+    "name": "Project name",
+    "lastModified": "Last modified",
+    "actions": "Actions",
+    "load": "Load",
+    "rename": "Rename",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete project",
+    "newProject": "New project",
+    "defaultName": "New project",
+    "noProjects": "No saved projects"
+  },
+  "errors": {
+    "singularMatrix": "System is unstable — stiffness matrix is singular. Check support conditions.",
+    "notEnoughNodes": "At least 2 nodes are required.",
+    "notEnoughElements": "At least 1 element is required.",
+    "noSupports": "At least 1 support is required.",
+    "noLoads": "At least 1 load is required.",
+    "insufficientSupports": "Insufficient supports for stability (m + r = {sum} < 2n = {required}).",
+    "disconnectedNode": "Node {nodeId} is not connected to any element.",
+    "calculationFailed": "Calculation failed"
+  },
+  "units": {
+    "kn": "kN",
+    "mpa": "MPa",
+    "gpa": "GPa",
+    "mm": "mm",
+    "m": "m",
+    "m2": "m²"
+  },
+  "canvas": {
+    "supportFixed": "Fixed",
+    "supportRollerX": "Roller X",
+    "supportRollerY": "Roller Y",
+    "forceX": "FX={value} kN",
+    "forceY": "FY={value} kN"
+  },
+  "export": {
+    "noData": "No truss data to export",
+    "pdfNoResults": "Run calculations before exporting PDF",
+    "pdfRenderFailed": "PDF saved, but the structure diagram could not be rendered"
+  }
+}

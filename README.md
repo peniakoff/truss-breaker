@@ -1,32 +1,78 @@
 # Truss Breaker
 
-SPA w Vue 3 + TypeScript do modelowania i obliczania płaskich układów kratownicowych metodą sztywności.
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://truss-breaker.tomasz-miller.workers.dev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Uruchomienie
+**Truss Breaker** — A fast, zero-install, browser-based 2D truss solver built for mechanical engineers.
+
+**[Live Demo](https://truss-breaker.tomasz-miller.workers.dev)** · [Contributing](CONTRIBUTING.md) · [Publishing checklist](docs/PUBLISHING.md)
+
+<!-- Add docs/demo.gif after recording a screen capture -->
+<!-- ![Truss Breaker demo](docs/demo.gif) -->
+
+## Features
+
+- Interactive SVG canvas for drawing nodes, elements, supports, and loads
+- Client-side stiffness-matrix solver (no server required)
+- Real-time visualization of axial forces (tension/compression coloring)
+- Support reactions and displacement results
+- Multi-project management with auto-save (Local Storage)
+- English and Polish UI (i18n)
+- Export to Python (`anastruct`) for further analysis in Jupyter
+- Steel profile catalog (IPE, HEB, pipes)
+- Deformed shape overlay
+- PDF report export
+
+## Quick Start
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Build produkcyjny
+Open [http://localhost:5173](http://localhost:5173).
+
+### Production build
 
 ```bash
 npm run build
+npm run preview   # local Cloudflare Workers preview
 ```
 
-## Funkcje
+### Tests
 
-- rysowanie węzłów, prętów, podpór i sił na interaktywnym canvasie SVG
-- zapisywanie wielu projektów w Local Storage
-- automatyczny zapis zmian
-- obliczanie przemieszczeń, sił osiowych, naprężeń i reakcji podpór
-- wizualizacja wyników na canvasie i w panelu bocznym
+```bash
+npm run test:unit   # Vitest unit tests
+npm run test:e2e    # Playwright E2E (requires: npx playwright install chromium)
+```
 
-## Założenia modelu
+### Deploy to Cloudflare
 
-- kratownica 2D
-- współrzędne robocze są snapowane do siatki
-- 1 jednostka siatki odpowiada 1 m modelu
-- obciążenia wejściowe podawane są w kN
-- moduł Younga w Pa, pole przekroju w m²
+```bash
+npm run deploy
+```
+
+Set `CLOUDFLARE_API_TOKEN` before deploying. See [docs/PUBLISHING.md](docs/PUBLISHING.md) for the full open-source publishing checklist.
+
+## Tech Stack
+
+- **Vue 3** + **TypeScript** — SPA frontend
+- **Math.js** — linear algebra (stiffness matrix solver)
+- **Pinia** — state management
+- **Tailwind CSS** — styling
+- **Cloudflare Workers** — static hosting ([live demo](https://truss-breaker.tomasz-miller.workers.dev))
+
+## Model Assumptions
+
+- 2D pin-jointed truss (bar elements only)
+- Coordinates snap to a grid (1 grid unit = 1 m)
+- Loads in kN, Young's modulus in Pa, cross-section area in m²
+- Small-displacement linear elastic analysis
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -13,14 +13,16 @@ export function elementLength(
 }
 
 /**
- * Calculate direction cosines for an element
+ * Calculate direction cosines for an element.
+ * NOTE: The Y-axis difference is inverted (-dy) to convert SVG coordinates (Y-down)
+ * into standard engineering Cartesian coordinates (Y-up).
  */
 export function directionCosines(
   x1: number, y1: number,
   x2: number, y2: number,
 ): { cos: number; sin: number } {
   const dx = (x2 - x1) / GRID_SIZE
-  const dy = (y2 - y1) / GRID_SIZE
+  const dy = -(y2 - y1) / GRID_SIZE
   const L = Math.sqrt(dx * dx + dy * dy)
   if (L === 0) throw new Error('Element has zero length')
   return { cos: dx / L, sin: dy / L }

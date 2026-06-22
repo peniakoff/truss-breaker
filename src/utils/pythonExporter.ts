@@ -40,7 +40,7 @@ export function generatePythonScript(data: TrussData, projectName = 'truss'): st
     '#',
     '# Units: meters (m), Newtons (N), Pascals (Pa)',
     '# Coordinates: anastruct Y-up (canvas Y is flipped: y_ana = -y_canvas)',
-    '# Loads: Fy is negated to match the Y-axis flip',
+    '# Loads: engineering Y-up (same convention as anastruct)',
     '#',
     '# pip install anastruct matplotlib',
     '',
@@ -82,14 +82,14 @@ export function generatePythonScript(data: TrussData, projectName = 'truss'): st
     lines.push(`${supportCode(support.type, formatCoord(x), formatCoord(y))}  # ${support.nodeId}`)
   }
 
-  lines.push('', '# --- Loads (kN → N, Fy flipped for Y-up) ---')
+  lines.push('', '# --- Loads (kN → N, engineering Y-up) ---')
   const nodalLoads = distributeLoadsToNodes(loads, elements)
   for (const contribution of nodalLoads) {
     const node = nodes.find((n) => n.id === contribution.nodeId)
     if (!node) continue
     const { x, y } = toAnastructCoords(node)
     const fx = (contribution.forceX * 1000).toFixed(1)
-    const fy = (-contribution.forceY * 1000).toFixed(1)
+    const fy = (contribution.forceY * 1000).toFixed(1)
     if (contribution.forceX === 0 && contribution.forceY === 0) continue
     lines.push(
       `ss.point_load(find_node_id(${formatCoord(x)}, ${formatCoord(y)}), Fx=${fx}, Fy=${fy})  # ${contribution.nodeId}`,

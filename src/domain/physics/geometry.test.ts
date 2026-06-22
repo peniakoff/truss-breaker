@@ -4,6 +4,7 @@ import {
   findNearestGridPointOnSegment,
   gridPointsOnSegment,
   elementLength,
+  directionCosines,
 } from '@/domain/physics/geometry'
 
 describe('gridPointsOnSegment', () => {
@@ -45,5 +46,19 @@ describe('findNearestGridPointOnSegment', () => {
 describe('elementLength', () => {
   it('computes length in meters from pixel coordinates', () => {
     expect(elementLength(0, 0, 3 * GRID_SIZE, 4 * GRID_SIZE)).toBeCloseTo(5)
+  })
+})
+
+describe('directionCosines', () => {
+  it('returns cos=1, sin=0 for horizontal element', () => {
+    const { cos, sin } = directionCosines(0, 0, 4 * GRID_SIZE, 0)
+    expect(cos).toBeCloseTo(1)
+    expect(sin).toBeCloseTo(0)
+  })
+
+  it('returns sin=-1 for element going down on screen (engineering Y-down)', () => {
+    const { cos, sin } = directionCosines(0, 0, 0, GRID_SIZE)
+    expect(cos).toBeCloseTo(0)
+    expect(sin).toBeCloseTo(-1)
   })
 })

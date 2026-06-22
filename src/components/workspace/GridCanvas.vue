@@ -172,7 +172,7 @@ const loadArrows = computed(() => {
     return [{
       id: load.id,
       label: forceLabel(load.forceX, load.forceY),
-      arrow: getForceArrow(position.x, position.y, load.forceX, load.forceY),
+      arrow: getForceArrow(position.x, position.y, load.forceX, -load.forceY),
     }]
   })
 })
@@ -191,7 +191,7 @@ const reactionArrows = computed(() => {
     return [{
       nodeId: reaction.nodeId,
       label: forceLabel(reaction.forceX, reaction.forceY),
-      arrow: getForceArrow(node.x, node.y, reaction.forceX, reaction.forceY),
+      arrow: getForceArrow(node.x, node.y, reaction.forceX, -reaction.forceY),
     }]
   })
 })
@@ -302,7 +302,7 @@ function getDeformedPosition(nodeId: string, x: number, y: number): { x: number;
   const scale = GRID_SIZE * DEFORMATION_SCALE_FACTOR
   return {
     x: x + displacement.dx * scale,
-    y: y + displacement.dy * scale,
+    y: y - displacement.dy * scale,
   }
 }
 

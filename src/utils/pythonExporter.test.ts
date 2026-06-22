@@ -50,14 +50,14 @@ describe('generatePythonScript', () => {
     expect(script).toContain('def find_node_id(x, y, tol=1e-4)')
     expect(script).toContain('ss.add_support_fixed(find_node_id(0.0000, 0.0000))')
     expect(script).toContain("ss.add_support_roll(find_node_id(4.0000, 0.0000), direction='y')")
-    expect(script).toContain('ss.point_load(find_node_id(0.0000, 0.0000), Fx=0.0, Fy=10000.0)')
+    expect(script).toContain('ss.point_load(find_node_id(0.0000, 0.0000), Fx=0.0, Fy=-10000.0)')
     expect(script).not.toContain('nodeIndex')
   })
 
-  it('negates Fy for Y-axis flip and uses correct displacement properties', () => {
+  it('exports Fy in engineering Y-up convention', () => {
     const script = generatePythonScript(makeSimpleTruss())
 
-    expect(script).toContain('Fy=10000.0')
+    expect(script).toContain('Fy=-10000.0')
     expect(script).toContain('ux={node.ux:.6e} m, uz={node.uz:.6e} m')
     expect(script).not.toContain('u_x')
     expect(script).not.toContain('u_y')
@@ -73,7 +73,7 @@ describe('generatePythonScript', () => {
     data.loads = [{ id: 'l1', elementId: 'e1', position: 0.5, forceX: 0, forceY: -20 }]
     const script = generatePythonScript(data)
 
-    expect(script).toContain('ss.point_load(find_node_id(0.0000, 0.0000), Fx=0.0, Fy=10000.0)')
-    expect(script).toContain('ss.point_load(find_node_id(4.0000, 0.0000), Fx=0.0, Fy=10000.0)')
+    expect(script).toContain('ss.point_load(find_node_id(0.0000, 0.0000), Fx=0.0, Fy=-10000.0)')
+    expect(script).toContain('ss.point_load(find_node_id(4.0000, 0.0000), Fx=0.0, Fy=-10000.0)')
   })
 })

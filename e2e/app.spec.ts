@@ -25,7 +25,22 @@ test.describe('Application bootstrap', () => {
   test('should load the application and display the header', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('header')).toBeVisible()
-    await expect(page.getByText('Truss Breaker')).toBeVisible()
+    await expect(page.locator('header').getByText('Truss Breaker')).toBeVisible()
+  })
+
+  test('should show a footer with contact, privacy and maker links in the active language', async ({ page }) => {
+    await page.goto('/')
+    const footer = page.locator('footer')
+    await expect(footer).toContainText('Tomasz Miller')
+    await expect(footer.getByRole('link', { name: 'contact@millers.dev' })).toHaveAttribute('href', 'mailto:contact@millers.dev')
+    await expect(footer.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy.html')
+    const maker = footer.getByRole('link', { name: /millers\.dev/ }).last()
+    await expect(maker).toHaveAttribute('href', 'https://millers.dev')
+    await expect(maker).toHaveAttribute('rel', /noopener/)
+
+    await page.getByRole('button', { name: 'PL' }).click()
+    await expect(footer.getByRole('link', { name: 'kontakt@millers.dev' })).toBeVisible()
+    await expect(footer.getByRole('link', { name: 'Prywatność' })).toHaveAttribute('href', '/polityka-prywatnosci.html')
   })
 
   test('should show toolbar with 5 tool buttons', async ({ page }) => {

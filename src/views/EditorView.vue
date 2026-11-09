@@ -31,6 +31,7 @@ import { generatePythonScript, downloadPythonScript } from '@/utils/pythonExport
 import { generatePdfReport } from '@/utils/pdfReportGenerator'
 
 const { t, currentLocale, toggleLocale } = useI18n()
+const year = new Date().getFullYear()
 const trussStore = useTrussStore()
 const uiStore = useUiStore()
 const projectsStore = useProjectsStore()
@@ -273,6 +274,17 @@ onUnmounted(() => {
           <PropertiesPanel v-else />
         </aside>
       </div>
+      <footer class="flex shrink-0 flex-wrap items-center justify-center gap-x-4 border-t bg-card px-3 py-1 text-xs text-muted-foreground sm:justify-between">
+        <span>Truss Breaker · © {{ year }} Tomasz Miller</span>
+        <nav class="flex flex-wrap items-center justify-center gap-x-4" :aria-label="t('footer.navigation')">
+          <a class="inline-flex min-h-10 items-center rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" :href="`mailto:${t('footer.contactEmail')}`">{{ t('footer.contactEmail') }}</a>
+          <a class="inline-flex min-h-10 items-center rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" :href="t('footer.privacyUrl')">{{ t('footer.privacy') }}</a>
+          <a class="inline-flex min-h-10 items-center gap-1.5 rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" href="https://millers.dev" target="_blank" rel="noopener noreferrer">
+            <img src="/millers-logo-hero.webp" alt="" width="18" height="18" class="size-[1.5em] rounded-sm" />
+            <span>{{ t('footer.maker') }} <strong>millers.dev</strong><span class="sr-only">{{ t('footer.newTab') }}</span></span>
+          </a>
+        </nav>
+      </footer>
     </div>
   </TooltipProvider>
 </template>

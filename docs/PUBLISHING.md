@@ -8,7 +8,7 @@ Steps to publish Truss Breaker as an open-source project on GitHub.
 npm run deploy
 ```
 
-After deploy, note the Workers/Pages URL and update it in `README.md` if different from `https://truss-breaker.pages.dev`.
+After deploy, note the Workers URL and update it in `README.md` if it differs from `https://truss-breaker.tomasz-miller.workers.dev`.
 
 ## 2. Make Repository Public
 
@@ -18,7 +18,7 @@ In GitHub → **Settings** → **General** → **Danger Zone** → **Change visi
 
 In GitHub → **Settings** or repository home → **About** (gear icon):
 
-- **Website:** your Cloudflare Pages URL
+- **Website:** your Cloudflare Workers URL
 - **Topics:** `structural-engineering`, `truss-solver`, `finite-element-analysis`, `vue3`, `typescript`, `civil-engineering`
 
 ## 4. Add Demo GIF
@@ -43,4 +43,4 @@ Create tag `v1.2.0` with release notes:
 
 ## 6. Optional: Custom Domain
 
-In Cloudflare dashboard, attach a custom domain to the Workers/Pages deployment.
+In Cloudflare dashboard, attach a custom domain to the Worker.

@@ -1,4 +1,13 @@
 {
+  "footer": {
+    "navigation": "Informacje o aplikacji",
+    "contact": "Kontakt",
+    "contactEmail": "kontakt@millers.dev",
+    "privacyUrl": "/polityka-prywatnosci.html",
+    "privacy": "Prywatność",
+    "maker": "Stworzone przez",
+    "newTab": " (otwiera nową kartę)"
+  },
   "app": {
     "name": "Truss Breaker"
   },
